@@ -1,0 +1,260 @@
+# Domain 3: Claude Code Configuration & Workflows (20%)
+# Add new questions by appending to the `questions` list below.
+
+questions:
+
+  - id: q4
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "3.2"
+    question: |
+      You want to create a custom /review slash command that runs your team's standard
+      code review checklist. This command should be available to every developer when
+      they clone or pull the repository. Where should you create this command file?
+    options:
+      A: "In the .claude/commands/ directory in the project repository."
+      B: "In ~/.claude/commands/ in each developer's home directory."
+      C: "In the CLAUDE.md file at the project root."
+      D: "In a .claude/config.json file with a commands array."
+    correct: A
+    explanation: |
+      Project-scoped custom slash commands should be stored in the .claude/commands/ directory
+      within the repository. These commands are version-controlled and automatically available
+      to all developers when they clone or pull the repo. Option B (~/.claude/commands/) is
+      for personal commands not shared via version control. CLAUDE.md (C) is for project
+      instructions, not command definitions. Option D describes a configuration mechanism
+      that doesn't exist in Claude Code.
+    docLink:
+      text: "Custom slash commands"
+      url: "https://code.claude.com/docs/en/slash-commands"
+    optionLinks:
+      A:
+        text: "Project-scoped commands (.claude/commands/)"
+        url: "https://code.claude.com/docs/en/slash-commands"
+      B:
+        text: "User-level commands (~/.claude/commands/)"
+        url: "https://code.claude.com/docs/en/slash-commands"
+      C:
+        text: "CLAUDE.md — instructions and memory"
+        url: "https://code.claude.com/docs/en/memory"
+      D:
+        text: "Claude Code configuration files overview"
+        url: "https://code.claude.com/docs"
+
+  - id: q5
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "3.4"
+    question: |
+      You've been assigned to restructure the team's monolithic application into
+      microservices, involving changes across dozens of files and requiring decisions
+      about service boundaries and module dependencies. Which approach should you take?
+    options:
+      A: "Enter plan mode to explore the codebase, understand dependencies, and design an implementation approach before making changes."
+      B: "Start with direct execution and make changes incrementally, letting the implementation reveal the natural service boundaries."
+      C: "Use direct execution with comprehensive upfront instructions detailing exactly how each service should be structured."
+      D: "Begin in direct execution mode and only switch to plan mode if you encounter unexpected complexity during implementation."
+    correct: A
+    explanation: |
+      Plan mode is designed for complex tasks involving large-scale changes, multiple valid
+      approaches, and architectural decisions — exactly what monolith-to-microservices
+      restructuring requires. It enables safe codebase exploration and design before
+      committing to changes. Option B risks costly rework when dependencies are discovered
+      late. Option C assumes you already know the right structure without exploring the code.
+      Option D ignores that the complexity is already stated in the requirements.
+    docLink:
+      text: "Plan mode vs direct execution"
+      url: "https://code.claude.com/docs"
+    optionLinks:
+      A:
+        text: "Plan mode — safe exploration before changes"
+        url: "https://code.claude.com/docs"
+      B:
+        text: "Incremental direct execution"
+        url: "https://code.claude.com/docs"
+      C:
+        text: "Upfront specification patterns"
+        url: "https://code.claude.com/docs"
+      D:
+        text: "Switching between plan and execute modes"
+        url: "https://code.claude.com/docs"
+
+  - id: q6
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "3.3"
+    question: |
+      Your codebase has distinct areas with different conventions: React components use
+      functional hooks style, API handlers use async/await with specific error handling,
+      and test files (e.g., Button.test.tsx next to Button.tsx) are spread throughout
+      the codebase. What's the most maintainable way to ensure Claude automatically
+      applies correct test conventions regardless of location?
+    options:
+      A: "Create rule files in .claude/rules/ with YAML frontmatter specifying glob patterns to conditionally apply conventions based on file paths."
+      B: "Consolidate all conventions in the root CLAUDE.md file under headers for each area, relying on Claude to infer which section applies."
+      C: "Create skills in .claude/skills/ for each code type that include the relevant conventions in their SKILL.md files."
+      D: "Place a separate CLAUDE.md file in each subdirectory containing that area's specific conventions."
+    correct: A
+    explanation: |
+      .claude/rules/ with glob patterns (e.g., **/*.test.tsx) allows conventions to be
+      automatically applied based on file paths regardless of directory location — essential
+      for test files spread throughout the codebase. Option B relies on inference rather
+      than explicit matching. Option C requires manual skill invocation, contradicting the
+      need for automatic application. Option D cannot handle files spread across many
+      directories since CLAUDE.md files are directory-bound.
+    docLink:
+      text: "Path-specific rules"
+      url: "https://code.claude.com/docs/en/memory"
+    optionLinks:
+      A:
+        text: "Path-specific rules with glob patterns (.claude/rules/)"
+        url: "https://code.claude.com/docs/en/memory"
+      B:
+        text: "Single CLAUDE.md with section headers"
+        url: "https://code.claude.com/docs/en/memory"
+      C:
+        text: "Skills — on-demand vs automatic application"
+        url: "https://code.claude.com/docs/en/slash-commands"
+      D:
+        text: "Per-directory CLAUDE.md hierarchy"
+        url: "https://code.claude.com/docs/en/memory"
+
+  - id: q10
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "3.6"
+    question: |
+      Your pipeline script runs `claude "Analyze this pull request for security issues"`
+      but the job hangs indefinitely. Logs indicate Claude Code is waiting for interactive
+      input. What's the correct approach to run Claude Code in an automated pipeline?
+    options:
+      A: "Add the -p flag: `claude -p \"Analyze this pull request for security issues\"`"
+      B: "Set the environment variable CLAUDE_HEADLESS=true before running the command."
+      C: "Redirect stdin from /dev/null: `claude \"Analyze...\" < /dev/null`"
+      D: "Add the --batch flag: `claude --batch \"Analyze this pull request for security issues\"`"
+    correct: A
+    explanation: |
+      The -p (or --print) flag is the documented way to run Claude Code in non-interactive
+      mode. It processes the prompt, outputs the result to stdout, and exits without waiting
+      for user input — exactly what CI/CD pipelines require. The other options reference
+      non-existent features (CLAUDE_HEADLESS, --batch flag) or use Unix workarounds that
+      don't properly address Claude Code's interactive mode.
+    docLink:
+      text: "Claude Code CI/CD integration"
+      url: "https://code.claude.com/docs/en/github-actions"
+    optionLinks:
+      A:
+        text: "-p / --print flag for non-interactive mode"
+        url: "https://code.claude.com/docs/en/github-actions"
+      B:
+        text: "Claude Code environment variables"
+        url: "https://code.claude.com/docs"
+      C:
+        text: "stdin redirection in CI environments"
+        url: "https://code.claude.com/docs/en/github-actions"
+      D:
+        text: "Claude Code CLI flags reference"
+        url: "https://code.claude.com/docs"
+
+  - id: d3_hierarchy
+    taskStatement: "3.1"
+    question: |
+      A new team member reports they're not getting the project's coding conventions
+      applied in their Claude Code sessions. Other team members work correctly.
+      Investigation reveals the conventions are defined in the tech lead's
+      ~/.claude/CLAUDE.md. What is the issue?
+    options:
+      A: "The new developer's Claude Code installation is outdated and needs updating."
+      B: "User-level CLAUDE.md (~/.claude/CLAUDE.md) is not shared via version control; conventions must be in project-level configuration to apply to all team members."
+      C: "CLAUDE.md conventions only apply in plan mode; the new developer needs to use plan mode."
+      D: "The new developer needs to run /memory to manually load the configuration from the tech lead's machine."
+    correct: B
+    explanation: |
+      User-level settings in ~/.claude/CLAUDE.md apply only to that user — they are never
+      shared with teammates via version control. For team-wide conventions, instructions must
+      be placed in project-level configuration (.claude/CLAUDE.md or root CLAUDE.md), which
+      is version-controlled and applies consistently to all team members.
+    docLink:
+      text: "CLAUDE.md configuration hierarchy"
+      url: "https://code.claude.com/docs/en/memory"
+    optionLinks:
+      A:
+        text: "Claude Code updates and versioning"
+        url: "https://code.claude.com/docs"
+      B:
+        text: "User vs project CLAUDE.md scoping"
+        url: "https://code.claude.com/docs/en/memory"
+      C:
+        text: "Plan mode scope and behavior"
+        url: "https://code.claude.com/docs"
+      D:
+        text: "/memory command"
+        url: "https://code.claude.com/docs/en/memory"
+
+  - id: d3_context_fork
+    taskStatement: "3.2"
+    question: |
+      Your team's /analyze-architecture skill produces thousands of lines of codebase
+      exploration output, flooding the main conversation context and making subsequent
+      development work difficult. Which frontmatter option in SKILL.md most directly
+      addresses this?
+    options:
+      A: "Set allowed-tools to limit which tools the skill can use, reducing output volume."
+      B: "Set context: fork to run the skill in an isolated sub-agent context, preventing its output from polluting the main conversation."
+      C: "Set argument-hint to let developers specify a narrower scope for the analysis."
+      D: "Move the skill to ~/.claude/skills/ so it runs in a separate user-level context."
+    correct: B
+    explanation: |
+      The context: fork frontmatter option runs skills in an isolated sub-agent context,
+      preventing skill outputs from polluting the main conversation. This is precisely the
+      use case it was designed for — verbose analysis or brainstorming output that shouldn't
+      clutter the main session. allowed-tools (A) controls access, not output volume.
+      argument-hint (C) helps with missing parameters. Moving to user-level (D) doesn't
+      change the context isolation behavior.
+    docLink:
+      text: "Skills frontmatter options"
+      url: "https://code.claude.com/docs/en/slash-commands"
+    optionLinks:
+      A:
+        text: "allowed-tools frontmatter in SKILL.md"
+        url: "https://code.claude.com/docs/en/slash-commands"
+      B:
+        text: "context: fork — isolated sub-agent execution"
+        url: "https://code.claude.com/docs/en/slash-commands"
+      C:
+        text: "argument-hint frontmatter"
+        url: "https://code.claude.com/docs/en/slash-commands"
+      D:
+        text: "User-level vs project-level skills"
+        url: "https://code.claude.com/docs/en/slash-commands"
+
+  - id: d3_explore
+    taskStatement: "3.4"
+    question: |
+      During a multi-phase refactoring task, the codebase discovery phase generates
+      extensive output that is nearly filling the context window, leaving little space
+      for the implementation phase. What is the appropriate solution?
+    options:
+      A: "Use /compact to summarize the discovery output before beginning implementation."
+      B: "Start a new session for implementation and manually copy a summary of discovery findings."
+      C: "Use the Explore subagent for the verbose discovery phase, which isolates the output and returns a summary to preserve the main context."
+      D: "Limit the scope of codebase exploration to reduce output volume."
+    correct: C
+    explanation: |
+      The Explore subagent is specifically designed to isolate verbose discovery output and
+      return summaries, preserving main conversation context for subsequent work. This is a
+      first-class design pattern for multi-phase tasks. /compact (A) compresses existing
+      context but is reactive. Starting a new session (B) loses rich context. Limiting
+      exploration scope (D) risks missing important dependencies.
+    docLink:
+      text: "Plan mode & Explore subagent"
+      url: "https://code.claude.com/docs"
+    optionLinks:
+      A:
+        text: "/compact — conversation compression"
+        url: "https://code.claude.com/docs"
+      B:
+        text: "Starting a new session — when it makes sense"
+        url: "https://code.claude.com/docs"
+      C:
+        text: "Explore subagent — isolated discovery"
+        url: "https://code.claude.com/docs"
+      D:
+        text: "Scoping codebase exploration"
+        url: "https://code.claude.com/docs"

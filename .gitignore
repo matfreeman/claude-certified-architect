@@ -1,0 +1,4 @@
+quiz-app/node_modules/
+quiz-app/dist/
+.DS_Store
+*.pdf

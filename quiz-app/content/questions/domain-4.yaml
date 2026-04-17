@@ -1,0 +1,304 @@
+# Domain 4: Prompt Engineering & Structured Output (20%)
+# Add new questions by appending to the `questions` list below.
+
+questions:
+
+  - id: q3
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "4.1"
+    question: |
+      Your agent achieves 55% first-contact resolution, well below the 80% target. Logs
+      show it escalates straightforward cases (standard damage replacements with photo
+      evidence) while attempting to autonomously handle complex situations requiring
+      policy exceptions. What's the most effective way to improve escalation calibration?
+    options:
+      A: "Add explicit escalation criteria to your system prompt with few-shot examples demonstrating when to escalate versus resolve autonomously."
+      B: "Have the agent self-report a confidence score (1-10) before each response and automatically route requests to humans when confidence falls below a threshold."
+      C: "Deploy a separate classifier model trained on historical tickets to predict which requests need escalation before the main agent begins processing."
+      D: "Implement sentiment analysis to detect customer frustration levels and automatically escalate when negative sentiment exceeds a threshold."
+    correct: A
+    explanation: |
+      Adding explicit escalation criteria with few-shot examples directly addresses the root
+      cause: unclear decision boundaries. This is the proportionate first response before
+      adding infrastructure. Option B fails because LLM self-reported confidence is poorly
+      calibrated. Option C is over-engineered, requiring labeled data and ML infrastructure
+      when prompt optimization hasn't been tried. Option D solves a different problem;
+      sentiment doesn't correlate with case complexity.
+    docLink:
+      text: "Prompt engineering best practices"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+    optionLinks:
+      A:
+        text: "Explicit criteria and few-shot examples"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      B:
+        text: "LLM confidence scores — limitations"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      C:
+        text: "Classifier models for routing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      D:
+        text: "Sentiment analysis as an escalation signal"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+
+  - id: q11
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "4.5"
+    question: |
+      Your team runs two workflows: (1) a blocking pre-merge check that must complete
+      before developers can merge, and (2) a technical debt report generated overnight
+      for review the next morning. Your manager proposes switching both to the Message
+      Batches API for its 50% cost savings. How should you evaluate this proposal?
+    options:
+      A: "Use batch processing for the technical debt reports only; keep real-time calls for pre-merge checks."
+      B: "Switch both workflows to batch processing with status polling to check for completion."
+      C: "Keep real-time calls for both workflows to avoid batch result ordering issues."
+      D: "Switch both to batch processing with a timeout fallback to real-time if batches take too long."
+    correct: A
+    explanation: |
+      The Message Batches API offers 50% cost savings but has processing times up to 24 hours
+      with no guaranteed latency SLA. This makes it unsuitable for blocking pre-merge checks
+      where developers wait for results, but ideal for overnight batch jobs like technical
+      debt reports. Option B is wrong because "often faster" completion isn't acceptable for
+      blocking workflows. Option C reflects a misconception — batch results can be correlated
+      using custom_id fields. Option D adds unnecessary complexity.
+    docLink:
+      text: "Message Batches API"
+      url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+    optionLinks:
+      A:
+        text: "Batch API — latency-tolerant workloads"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      B:
+        text: "Batch API status polling"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      C:
+        text: "Batch result correlation with custom_id"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      D:
+        text: "Hybrid batch/real-time architectures"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+
+  - id: q12
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "4.6"
+    question: |
+      A pull request modifies 14 files across the stock tracking module. A single-pass
+      review produces inconsistent results: detailed feedback for some files, superficial
+      comments for others, obvious bugs missed, and contradictory feedback — flagging a
+      pattern as problematic in one file while approving the same pattern in another.
+      How should you restructure the review?
+    options:
+      A: "Split into focused passes: analyze each file individually for local issues, then run a separate integration-focused pass examining cross-file data flow."
+      B: "Require developers to split large PRs into smaller submissions of 3-4 files before automated review runs."
+      C: "Switch to a higher-tier model with a larger context window to give all 14 files adequate attention in one pass."
+      D: "Run three independent review passes on the full PR and only flag issues that appear in at least two of the three runs."
+    correct: A
+    explanation: |
+      Splitting reviews into focused passes directly addresses the root cause: attention
+      dilution when processing many files at once. File-by-file analysis ensures consistent
+      depth, while a separate integration pass catches cross-file issues. Option B shifts
+      burden to developers without improving the system. Option C misunderstands that larger
+      context windows don't solve attention quality issues. Option D would suppress detection
+      of real bugs by requiring consensus on issues that may only be caught intermittently.
+    docLink:
+      text: "Multi-pass review architectures"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+    optionLinks:
+      A:
+        text: "Multi-pass focused review patterns"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      B:
+        text: "PR size limits and developer workflows"
+        url: "https://code.claude.com/docs/en/github-actions"
+      C:
+        text: "Context window size vs attention quality"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      D:
+        text: "Consensus voting in multi-pass review"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+
+  - id: d4_fewshot_extract
+    taskStatement: "4.2"
+    question: |
+      Your document extraction system handles invoices from multiple vendors. Some vendors
+      use narrative descriptions ("approximately 5 gallons at $3.20/gallon"), others use
+      structured tables. The model frequently returns null for values that exist only in
+      narrative form. What improvement would have the most impact?
+    options:
+      A: "Add format normalization rules to the system prompt describing each possible vendor format."
+      B: "Add few-shot examples demonstrating correct extraction from both narrative descriptions and structured table formats."
+      C: "Split the extraction into two sequential passes: one for structured data, one for narrative content."
+      D: "Use a stricter JSON schema with enum constraints to guide the model toward expected value formats."
+    correct: B
+    explanation: |
+      Few-shot examples are the most effective technique for reducing hallucination and
+      improving extraction from varied document structures. Examples showing extraction from
+      both narrative and structured formats enable the model to generalize judgment to novel
+      patterns rather than only matching pre-specified cases. Format normalization rules (A)
+      help but are less effective than concrete examples. Two-pass extraction (C) adds
+      complexity. Stricter schemas (D) constrain output format but don't help the model find
+      values in narrative text.
+    docLink:
+      text: "Few-shot prompting guide"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+    optionLinks:
+      A:
+        text: "Format normalization in system prompts"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      B:
+        text: "Few-shot examples for varied document formats"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      C:
+        text: "Multi-pass sequential extraction"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      D:
+        text: "JSON schema constraints for structured output"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+
+  - id: d4_nullable
+    taskStatement: "4.3"
+    question: |
+      Your invoice extraction schema marks discount_amount as a required field. In
+      production, documents without discounts cause the model to fabricate values like
+      "$0.00" rather than returning null. What is the correct fix?
+    options:
+      A: "Add a system prompt instruction: 'If a discount field is not present, return 0 for the discount_amount.'"
+      B: "Change discount_amount to optional/nullable in the JSON schema."
+      C: "Add a few-shot example showing correct extraction from a document that has no discount."
+      D: "Use an enum field for discount_amount with '0' as a valid option."
+    correct: B
+    explanation: |
+      Schema fields should be designed as optional/nullable when source documents may not
+      contain the information. Required fields pressure the model to fabricate values to
+      satisfy the schema constraint. Making the field nullable signals that null is the
+      correct response when the information is absent. A system prompt instruction (A) is
+      a probabilistic fix. A few-shot example (C) helps but doesn't address the root
+      structural cause. An enum (D) is for categorical values, not for handling absent fields.
+    docLink:
+      text: "Structured output with tool use"
+      url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+    optionLinks:
+      A:
+        text: "System prompt instructions for absent fields"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      B:
+        text: "Optional/nullable fields in JSON schema"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      C:
+        text: "Few-shot examples for missing data"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      D:
+        text: "Enum constraints in tool schemas"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+
+  - id: d4_retry
+    taskStatement: "4.4"
+    question: |
+      Your extraction system validates that line item totals sum to the invoice total.
+      In 8% of cases, extracted values don't sum correctly (e.g., line items total $1,234
+      but stated_total is $1,200). What is the most effective remediation?
+    options:
+      A: "Lower the minimum confidence threshold to accept extractions with minor discrepancies (< 5%)."
+      B: "Implement a retry that appends the specific validation error to the original document and failed extraction, asking the model to correct the discrepancy."
+      C: "Use the Message Batches API to reprocess failed extractions overnight with a different prompt."
+      D: "Add few-shot examples showing correct line-item summation for similar document types."
+    correct: B
+    explanation: |
+      Retry-with-error-feedback appends specific validation errors to the prompt on retry to
+      guide the model toward correction. For semantic errors like arithmetic inconsistencies,
+      this approach is effective because the information is present in the document — the
+      model made an error it can correct when shown the specific discrepancy. Lowering
+      thresholds (A) accepts bad data. Batch reprocessing (C) doesn't change the prompt,
+      so errors would repeat. Few-shot examples (D) help but don't address the specific
+      extraction that already failed.
+    docLink:
+      text: "Validation and retry loops"
+      url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+    optionLinks:
+      A:
+        text: "Confidence thresholds and acceptance criteria"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      B:
+        text: "Retry-with-error-feedback loops"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      C:
+        text: "Message Batches API for reprocessing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      D:
+        text: "Few-shot examples for arithmetic extraction"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+
+  - id: d4_batch_sla
+    taskStatement: "4.5"
+    question: |
+      Your document processing pipeline needs to handle 10,000 contracts nightly with
+      results available by 8 AM. Processing starts at midnight. The pipeline is not
+      blocking any real-time workflows. Which API approach best balances cost and
+      requirements?
+    options:
+      A: "Standard synchronous API with parallel requests for lowest latency and most predictable timing."
+      B: "Message Batches API for 50% cost savings, given the 8-hour window and latency tolerance."
+      C: "Standard API with rate limiting to stay within quotas while keeping costs predictable."
+      D: "Message Batches API with a synchronous fallback for any batch that doesn't complete within 6 hours."
+    correct: B
+    explanation: |
+      The Message Batches API offers 50% cost savings and is appropriate for non-blocking,
+      latency-tolerant workloads. With an 8-hour window (midnight to 8 AM) and a maximum
+      24-hour processing time, a nightly run submitted at midnight has an excellent chance of
+      completing by 8 AM. This is exactly the use case the Batch API was designed for. The
+      synchronous API (A, C) sacrifices cost savings unnecessarily. Option D adds unnecessary
+      complexity.
+    docLink:
+      text: "Message Batches API"
+      url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+    optionLinks:
+      A:
+        text: "Synchronous API with parallel requests"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      B:
+        text: "Message Batches API — cost and SLA tradeoffs"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      C:
+        text: "Rate limiting and quota management"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      D:
+        text: "Hybrid batch/sync fallback patterns"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+
+  - id: d4_explicit_criteria
+    taskStatement: "4.1"
+    question: |
+      Your CI code review tool has high false positive rates for comment accuracy checks,
+      causing developers to distrust all its findings. You've tried instructions like
+      "only report high-confidence findings" and "be conservative." Neither has improved
+      precision. What is the most effective next step?
+    options:
+      A: "Switch to a more powerful model with better calibration."
+      B: "Temporarily disable comment accuracy checks entirely while developing more precise criteria."
+      C: "Define explicit, categorical review criteria specifying exactly which comment issues to flag (e.g., 'flag only when claimed behavior directly contradicts actual code behavior') and which to skip."
+      D: "Reduce the scope of review to only the most recently changed lines."
+    correct: C
+    explanation: |
+      General instructions like "be conservative" fail to improve precision because they don't
+      give the model specific decision criteria. Explicit categorical criteria (e.g., "flag
+      comments only when claimed behavior contradicts actual code behavior") provide concrete
+      rules the model can apply consistently. High false-positive categories also undermine
+      confidence in accurate categories — option B is a valid tactical step while improving
+      prompts, but C is the root cause fix.
+    docLink:
+      text: "Prompt engineering: explicit criteria"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+    optionLinks:
+      A:
+        text: "Model selection and calibration"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      B:
+        text: "Disabling checks while iterating on prompts"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Explicit categorical criteria for precision"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      D:
+        text: "Scoping review to changed lines only"
+        url: "https://code.claude.com/docs/en/github-actions"

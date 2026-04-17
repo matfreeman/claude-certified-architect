@@ -1,0 +1,253 @@
+# Domain 2: Tool Design & MCP Integration (18%)
+# Add new questions by appending to the `questions` list below.
+
+questions:
+
+  - id: q2
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "2.1"
+    question: |
+      Production logs show the agent frequently calls get_customer when users ask about
+      orders (e.g., "check my order #12345"), instead of calling lookup_order. Both tools
+      have minimal descriptions ("Retrieves customer information" / "Retrieves order
+      details") and accept similar identifier formats. What's the most effective first
+      step to improve tool selection reliability?
+    options:
+      A: "Add few-shot examples to the system prompt demonstrating correct tool selection patterns, with 5-8 examples showing order-related queries routing to lookup_order."
+      B: "Expand each tool's description to include input formats it handles, example queries, edge cases, and boundaries explaining when to use it versus similar tools."
+      C: "Implement a routing layer that parses user input before each turn and pre-selects the appropriate tool based on detected keywords and identifier patterns."
+      D: "Consolidate both tools into a single lookup_entity tool that accepts any identifier and internally determines which backend to query."
+    correct: B
+    explanation: |
+      Tool descriptions are the primary mechanism LLMs use for tool selection. When
+      descriptions are minimal, models lack the context to differentiate between similar
+      tools. Option B directly addresses this root cause with a low-effort, high-leverage fix.
+      Few-shot examples (A) add token overhead without fixing the underlying issue. A routing
+      layer (C) is over-engineered and bypasses the LLM's natural language understanding.
+      Consolidating tools (D) is valid but requires more effort than a "first step" warrants.
+    docLink:
+      text: "Tool interface design"
+      url: "https://modelcontextprotocol.io/introduction"
+    optionLinks:
+      A:
+        text: "Few-shot examples for tool selection"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      B:
+        text: "Writing effective tool descriptions"
+        url: "https://modelcontextprotocol.io/introduction"
+      C:
+        text: "Routing classifiers and pre-selection"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      D:
+        text: "Tool consolidation patterns"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+
+  - id: d2_iserror
+    taskStatement: "2.2"
+    question: |
+      An MCP tool for customer lookups experiences a database timeout. The tool catches
+      the exception and returns {success: false, message: "Database error"} without
+      setting the MCP isError flag. How does this most likely affect the agent's behavior?
+    options:
+      A: "The agent will interpret this as a successful query that returned no matching results, preventing appropriate recovery."
+      B: "The agent will automatically retry the tool since the MCP protocol detects the error format."
+      C: "The agent will route to the error handling workflow since the success:false field signals failure."
+      D: "The agent will escalate to a human since any non-standard response triggers escalation."
+    correct: A
+    explanation: |
+      Without the MCP isError flag, the agent cannot reliably distinguish between a failed
+      tool call and a successful call that returned no matches. It may treat the error object
+      as content, preventing appropriate recovery decisions (retry, alternative approach,
+      escalation). The isError flag is the designated mechanism for communicating tool
+      failures in the MCP protocol.
+    docLink:
+      text: "MCP error handling patterns"
+      url: "https://modelcontextprotocol.io/introduction"
+    optionLinks:
+      A:
+        text: "isError flag — signaling tool failures correctly"
+        url: "https://modelcontextprotocol.io/introduction"
+      B:
+        text: "Automatic retry behavior in MCP"
+        url: "https://modelcontextprotocol.io/introduction"
+      C:
+        text: "Custom error fields vs the isError flag"
+        url: "https://modelcontextprotocol.io/introduction"
+      D:
+        text: "Escalation patterns for tool failures"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+
+  - id: d2_toomantools
+    taskStatement: "2.3"
+    question: |
+      Your multi-agent research system exposes all 18 system tools to every agent (web
+      search, document analysis, citation management, translation, etc.). Agents frequently
+      call tools outside their specialization. What is the primary cause and best fix?
+    options:
+      A: "The tool descriptions are ambiguous; rewrite all 18 descriptions to be more specific about intended users."
+      B: "Too many tools degrades tool selection reliability by increasing decision complexity; restrict each agent's tool set to only those relevant to its role."
+      C: "The system prompt doesn't specify which tools each agent should prefer; add preference instructions."
+      D: "Agents need more few-shot examples showing correct tool selection patterns for each role."
+    correct: B
+    explanation: |
+      Giving an agent access to too many tools degrades tool selection reliability by
+      increasing decision complexity. Agents with tools outside their specialization tend to
+      misuse them. The fix is scoped tool access: giving agents only the tools needed for
+      their role. Even with perfect descriptions (A) and good few-shot examples (D), too many
+      choices remain problematic. Preference instructions (C) are probabilistic, not structural.
+    docLink:
+      text: "Tool distribution across agents"
+      url: "https://modelcontextprotocol.io/introduction"
+    optionLinks:
+      A:
+        text: "Writing effective tool descriptions"
+        url: "https://modelcontextprotocol.io/introduction"
+      B:
+        text: "Scoped tool access — least privilege for agents"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "System prompt preference instructions"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      D:
+        text: "Few-shot examples for tool selection"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+
+  - id: d2_toolchoice
+    taskStatement: "2.3"
+    question: |
+      You are building an invoice extraction pipeline where Claude must always call your
+      extract_invoice_data tool rather than returning a conversational response. Which
+      tool_choice configuration guarantees this behavior?
+    options:
+      A: "tool_choice: 'auto' — Claude will call the tool when it determines it's appropriate."
+      B: "tool_choice: 'any' — Claude must call a tool but can choose which one."
+      C: "tool_choice: {type: 'tool', name: 'extract_invoice_data'} — forces this specific tool."
+      D: "Setting required: true in the tool definition schema."
+    correct: C
+    explanation: |
+      Forced tool selection with {type: "tool", name: "extract_invoice_data"} guarantees the
+      model calls that specific named tool. "auto" (A) allows the model to return text instead
+      of calling a tool. "any" (B) guarantees a tool is called but the model chooses which —
+      problematic when multiple tools are available. There is no required: true property in
+      tool definitions (D).
+    docLink:
+      text: "Tool use & tool_choice configuration"
+      url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+    optionLinks:
+      A:
+        text: "tool_choice: auto — model-selected calling"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      B:
+        text: "tool_choice: any — forced tool, model's choice"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      C:
+        text: "tool_choice: tool — force a specific named tool"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      D:
+        text: "Tool definition schema reference"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+
+  - id: d2_mcp_scope
+    taskStatement: "2.4"
+    question: |
+      Your team wants to share a GitHub MCP server configuration across all developers,
+      with each developer authenticating using their own personal GitHub token. What is
+      the correct configuration approach?
+    options:
+      A: "Add the server to ~/.claude.json on each developer's machine with their personal token hardcoded."
+      B: "Add the server to project-scoped .mcp.json with ${GITHUB_TOKEN} environment variable expansion for the token."
+      C: "Add the server configuration to CLAUDE.md with instructions for each developer to add their token."
+      D: "Create a shared .env file in the repository containing a team-wide GitHub token."
+    correct: B
+    explanation: |
+      Project-level .mcp.json is the correct file for shared team tooling (version-controlled,
+      available to all developers). Environment variable expansion (${GITHUB_TOKEN}) manages
+      credentials without committing secrets. Option A uses user-level config which isn't
+      shared. CLAUDE.md (C) is for instructions, not server configuration. Committing a team
+      token to .env (D) is a security risk.
+    docLink:
+      text: "MCP server configuration"
+      url: "https://code.claude.com/docs/en/mcp"
+    optionLinks:
+      A:
+        text: "User-level ~/.claude.json configuration"
+        url: "https://code.claude.com/docs/en/mcp"
+      B:
+        text: "Project-level .mcp.json with env var expansion"
+        url: "https://code.claude.com/docs/en/mcp"
+      C:
+        text: "CLAUDE.md — instructions vs configuration"
+        url: "https://code.claude.com/docs/en/memory"
+      D:
+        text: "Secrets management best practices"
+        url: "https://code.claude.com/docs/en/mcp"
+
+  - id: d2_builtins
+    taskStatement: "2.5"
+    question: |
+      While exploring a large codebase, you need to find all files that call a function
+      named processPayment. Which built-in tool and approach is most appropriate?
+    options:
+      A: "Use Glob with pattern **/*.ts to find all TypeScript files, then Read each one to search for the function name."
+      B: "Use Read on the main application entry point and follow its imports to trace where processPayment is called."
+      C: "Use Grep with the pattern processPayment to search file contents across the codebase."
+      D: "Use Glob with pattern *processPayment* to find files whose names contain the function name."
+    correct: C
+    explanation: |
+      Grep is designed for content search — finding patterns within file contents. This is
+      exactly what's needed to locate all callers of processPayment. Glob (A, D) is for file
+      path pattern matching (finding files by name/extension), not searching inside files.
+      Reading the entry point and following imports (B) would miss indirect callers and is
+      inefficient for a large codebase.
+    docLink:
+      text: "Built-in tools — Grep, Glob, Read"
+      url: "https://code.claude.com/docs"
+    optionLinks:
+      A:
+        text: "Glob tool — file path pattern matching"
+        url: "https://code.claude.com/docs"
+      B:
+        text: "Read tool — reading specific files"
+        url: "https://code.claude.com/docs"
+      C:
+        text: "Grep tool — searching file contents"
+        url: "https://code.claude.com/docs"
+      D:
+        text: "Glob patterns — filename vs content search"
+        url: "https://code.claude.com/docs"
+
+  - id: d2_error_types
+    taskStatement: "2.2"
+    question: |
+      Your process_refund MCP tool returns a business error: the refund was rejected
+      because the customer is outside the return window. How should this error be
+      structured to enable appropriate agent behavior?
+    options:
+      A: "Return isError: true with errorCategory: 'transient' and isRetryable: true so the agent retries later."
+      B: "Return isError: true with errorCategory: 'business', isRetryable: false, and a customer-friendly explanation of the policy."
+      C: "Return isError: true with a generic message 'Operation failed' to keep the response format consistent."
+      D: "Throw an exception and let the coordinator's top-level error handler decide how to respond."
+    correct: B
+    explanation: |
+      Business errors (policy violations like expired return windows) are non-retryable.
+      Returning structured metadata with errorCategory: "business", isRetryable: false, and
+      a human-readable explanation lets the agent communicate the reason to the customer
+      without wasting retry attempts. Categorizing it as "transient" (A) would cause needless
+      retries. A generic message (C) prevents the agent from making appropriate decisions.
+      Throwing exceptions (D) propagates to the coordinator unnecessarily.
+    docLink:
+      text: "MCP structured error responses"
+      url: "https://modelcontextprotocol.io/introduction"
+    optionLinks:
+      A:
+        text: "Transient errors and isRetryable flag"
+        url: "https://modelcontextprotocol.io/introduction"
+      B:
+        text: "Business errors — errorCategory in MCP"
+        url: "https://modelcontextprotocol.io/introduction"
+      C:
+        text: "Generic vs structured error messages"
+        url: "https://modelcontextprotocol.io/introduction"
+      D:
+        text: "Exception propagation in agent architectures"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"

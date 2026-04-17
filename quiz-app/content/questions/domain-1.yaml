@@ -1,0 +1,360 @@
+# Domain 1: Agentic Architecture & Orchestration (27%)
+# Add new questions by appending to the `questions` list below.
+
+questions:
+
+  - id: q1
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "1.4"
+    question: |
+      Production data shows that in 12% of cases, your agent skips get_customer entirely
+      and calls lookup_order using only the customer's stated name, occasionally leading to
+      misidentified accounts and incorrect refunds. What change would most effectively
+      address this reliability issue?
+    options:
+      A: "Add a programmatic prerequisite that blocks lookup_order and process_refund calls until get_customer has returned a verified customer ID."
+      B: "Enhance the system prompt to state that customer verification via get_customer is mandatory before any order operations."
+      C: "Add few-shot examples showing the agent always calling get_customer first, even when customers volunteer order details."
+      D: "Implement a routing classifier that analyzes each request and enables only the subset of tools appropriate for that request type."
+    correct: A
+    explanation: |
+      When a specific tool sequence is required for critical business logic (like verifying
+      customer identity before processing refunds), programmatic enforcement provides
+      deterministic guarantees that prompt-based approaches cannot. Options B and C rely on
+      probabilistic LLM compliance, which is insufficient when errors have financial
+      consequences. Option D addresses tool availability rather than tool ordering.
+    docLink:
+      text: "Agent SDK hooks & enforcement"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "Agent hooks — programmatic enforcement"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      B:
+        text: "System prompt best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Few-shot prompting with examples"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      D:
+        text: "Tool use & tool_choice configuration"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+
+  - id: q7
+    scenario: "Multi-Agent Research System"
+    taskStatement: "1.2"
+    question: |
+      After running the system on "impact of AI on creative industries," each subagent
+      completes successfully. However, the final reports cover only visual arts, completely
+      missing music, writing, and film production. The coordinator decomposed the topic into:
+      "AI in digital art creation," "AI in graphic design," and "AI in photography." What is
+      the most likely root cause?
+    options:
+      A: "The synthesis agent lacks instructions for identifying coverage gaps in the findings it receives from other agents."
+      B: "The coordinator agent's task decomposition is too narrow, resulting in subagent assignments that don't cover all relevant domains of the topic."
+      C: "The web search agent's queries are not comprehensive enough and need to be expanded to cover more creative industry sectors."
+      D: "The document analysis agent is filtering out sources related to non-visual creative industries due to overly restrictive relevance criteria."
+    correct: B
+    explanation: |
+      The coordinator's logs reveal the root cause directly: it decomposed "creative industries"
+      into only visual arts subtasks (digital art, graphic design, photography), completely
+      omitting music, writing, and film. The subagents executed their assigned tasks correctly
+      — the problem is what they were assigned. Options A, C, and D incorrectly blame downstream
+      agents that are working correctly within their assigned scope.
+    docLink:
+      text: "Multi-agent orchestration patterns"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "Synthesis agent design patterns"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      B:
+        text: "Coordinator task decomposition"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "Tool interface design for search agents"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      D:
+        text: "Relevance filtering in document analysis"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: q8
+    scenario: "Multi-Agent Research System"
+    taskStatement: "1.3"
+    question: |
+      The web search subagent times out while researching a complex topic. You need to
+      design how this failure information flows back to the coordinator agent. Which error
+      propagation approach best enables intelligent recovery?
+    options:
+      A: "Return structured error context to the coordinator including the failure type, the attempted query, any partial results, and potential alternative approaches."
+      B: "Implement automatic retry logic with exponential backoff within the subagent, returning a generic 'search unavailable' status only after all retries are exhausted."
+      C: "Catch the timeout within the subagent and return an empty result set marked as successful."
+      D: "Propagate the timeout exception directly to a top-level handler that terminates the entire research workflow."
+    correct: A
+    explanation: |
+      Structured error context gives the coordinator the information it needs to make
+      intelligent recovery decisions — whether to retry with a modified query, try an
+      alternative approach, or proceed with partial results. Option B's generic status hides
+      valuable context. Option C suppresses the error by marking failure as success,
+      preventing any recovery. Option D terminates the entire workflow unnecessarily.
+    docLink:
+      text: "Error handling in multi-agent systems"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "Structured error context & recovery patterns"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      B:
+        text: "Retry strategies with exponential backoff"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "Error propagation anti-patterns"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      D:
+        text: "Top-level error handling"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: q9
+    scenario: "Multi-Agent Research System"
+    taskStatement: "1.2"
+    question: |
+      The synthesis agent frequently needs to verify specific claims, adding 2-3 round
+      trips per task (40% latency increase). 85% of verifications are simple fact-checks;
+      15% require deeper investigation. What's the most effective approach to reduce
+      overhead while maintaining system reliability?
+    options:
+      A: "Give the synthesis agent a scoped verify_fact tool for simple lookups, while complex verifications continue delegating to the web search agent through the coordinator."
+      B: "Have the synthesis agent accumulate all verification needs and return them as a batch to the coordinator at the end of its pass."
+      C: "Give the synthesis agent access to all web search tools so it can handle any verification need directly without round-trips through the coordinator."
+      D: "Have the web search agent proactively cache extra context around each source during initial research, anticipating what the synthesis agent might need to verify."
+    correct: A
+    explanation: |
+      Option A applies least privilege by giving the synthesis agent only what it needs for
+      the 85% common case (simple fact verification) while preserving existing coordination
+      for complex cases. Option B's batching creates blocking dependencies since synthesis
+      steps may depend on earlier verified facts. Option C over-provisions the synthesis
+      agent, violating separation of concerns. Option D relies on speculative caching that
+      cannot reliably predict what the synthesis agent will need.
+    docLink:
+      text: "Tool distribution across agents"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "Scoped tool access & least privilege"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      B:
+        text: "Batching strategies in agentic systems"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      C:
+        text: "Over-provisioning tools — risks"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      D:
+        text: "Proactive caching in multi-agent systems"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: d1_loop
+    taskStatement: "1.1"
+    question: |
+      You are implementing an agentic loop using the Claude API. After each API call, what
+      is the correct condition for continuing the loop vs. terminating it?
+    options:
+      A: "Continue when the response contains tool_use blocks in the content; terminate when it contains only text."
+      B: "Continue when stop_reason is 'tool_use'; terminate when stop_reason is 'end_turn'."
+      C: "Continue until you reach a maximum iteration count, which should always be set as the primary stopping mechanism."
+      D: "Continue while the model asks clarifying questions; terminate when it expresses certainty about its answer."
+    correct: B
+    explanation: |
+      The stop_reason field is the authoritative signal for loop control. "tool_use" means
+      Claude wants to call a tool and expects results; "end_turn" means it has finished.
+      Option A is wrong because the stop_reason is the intended mechanism, not content
+      inspection. Option C is an anti-pattern — arbitrary iteration caps should not be the
+      primary stopping mechanism. Option D is entirely unpredictable.
+    docLink:
+      text: "Agentic loops & tool use"
+      url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+    optionLinks:
+      A:
+        text: "Response content structure"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      B:
+        text: "stop_reason and agentic loop control"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+      C:
+        text: "Loop termination and safety limits"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      D:
+        text: "Agentic loop design patterns"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: d1_hooks
+    taskStatement: "1.5"
+    question: |
+      Your customer support agent receives order data from one MCP tool returning Unix
+      timestamps and another returning ISO 8601 dates. This inconsistency causes the model
+      to struggle with date comparisons. What is the most architecturally sound solution?
+    options:
+      A: "Add instructions to the system prompt telling Claude to convert Unix timestamps to ISO 8601 before comparing dates."
+      B: "Implement a PostToolUse hook that normalizes all date formats before the results are added to conversation context."
+      C: "Modify each MCP tool to return dates in a consistent format by updating their source code."
+      D: "Create a separate normalize_date tool that Claude can call whenever it encounters inconsistent formats."
+    correct: B
+    explanation: |
+      PostToolUse hooks intercept tool results and can transform them before the model
+      processes them, providing clean architectural separation. This guarantees normalization
+      regardless of what the model does. Option A relies on probabilistic LLM compliance.
+      Option C requires changing external tools you may not own. Option D adds an extra tool
+      call for every date field, increasing latency and the risk the model forgets to call it.
+    docLink:
+      text: "Agent SDK hooks"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "System prompt data handling instructions"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      B:
+        text: "PostToolUse hooks — intercepting tool results"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "MCP tool interface contracts"
+        url: "https://modelcontextprotocol.io/introduction"
+      D:
+        text: "Normalization tool design"
+        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+
+  - id: d1_fork
+    taskStatement: "1.7"
+    question: |
+      Your team has completed a comprehensive codebase analysis and now wants to explore
+      two competing refactoring approaches simultaneously, without re-running the full
+      analysis. Which approach best addresses this?
+    options:
+      A: "Create two separate Claude Code sessions and re-run the codebase analysis in each one."
+      B: "Use fork_session to branch from the shared analysis baseline, creating independent sessions for each approach."
+      C: "Use --resume to continue the analysis session, alternating between approaches in a single session."
+      D: "Save the analysis results to a file and manually inject them into two separate fresh sessions."
+    correct: B
+    explanation: |
+      fork_session creates independent branches from a shared analysis baseline to explore
+      divergent approaches — exactly this scenario. Option A wastes time re-running expensive
+      analysis. Option C forces sequential exploration in one session, making comparisons
+      difficult and polluting the context. Option D is a manual workaround that loses the
+      session's richer context (tool results, reasoning chains).
+    docLink:
+      text: "Claude Code session management"
+      url: "https://code.claude.com/docs"
+    optionLinks:
+      A:
+        text: "Starting new Claude Code sessions"
+        url: "https://code.claude.com/docs"
+      B:
+        text: "fork_session — branching from a shared baseline"
+        url: "https://code.claude.com/docs"
+      C:
+        text: "--resume flag and session continuation"
+        url: "https://code.claude.com/docs"
+      D:
+        text: "Manual context transfer between sessions"
+        url: "https://code.claude.com/docs"
+
+  - id: d1_decompose
+    taskStatement: "1.6"
+    question: |
+      You're asked to add comprehensive test coverage to a large legacy codebase with no
+      existing tests. Which decomposition approach is most appropriate for this open-ended task?
+    options:
+      A: "Use prompt chaining: analyze each file individually for test opportunities, then consolidate into a test plan."
+      B: "Use dynamic adaptive decomposition: first map codebase structure, identify high-impact areas, then generate a prioritized plan that adapts as dependencies are discovered."
+      C: "Use direct execution: start writing tests for the most critical entry-point files immediately."
+      D: "Use a fixed sequential pipeline: list all files alphabetically, then write tests for each in order."
+    correct: B
+    explanation: |
+      Open-ended tasks like "add comprehensive tests to a legacy codebase" require adaptive
+      decomposition that generates subtasks based on discoveries at each step. You cannot know
+      the right plan upfront because the codebase structure reveals the best testing strategy.
+      Prompt chaining (A) works for predictable multi-aspect reviews, not open-ended
+      exploration. Options C and D bypass the discovery phase needed to prioritize effectively.
+    docLink:
+      text: "Task decomposition strategies"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "Prompt chaining — sequential multi-step processing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      B:
+        text: "Dynamic adaptive decomposition"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "Direct execution vs plan-first approaches"
+        url: "https://code.claude.com/docs"
+      D:
+        text: "Fixed pipeline patterns"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: d1_context_pass
+    taskStatement: "1.3"
+    question: |
+      In a multi-agent research system, the synthesis subagent is producing reports that
+      ignore key findings from the document analysis subagent. Investigation reveals the
+      synthesis agent has no awareness of those findings. What is the most likely root cause?
+    options:
+      A: "The synthesis agent's context window is too small to hold all the analysis findings."
+      B: "The coordinator's system prompt does not instruct it to invoke the synthesis agent after document analysis."
+      C: "Subagents do not automatically inherit the coordinator's conversation history; the findings were never passed explicitly in the synthesis agent's prompt."
+      D: "The document analysis subagent is returning results in a format the synthesis agent cannot parse."
+    correct: C
+    explanation: |
+      Subagents operate with isolated context — they do not automatically inherit the
+      coordinator's conversation history or other subagents' outputs. The coordinator must
+      explicitly include prior findings in each subagent's prompt. This is a fundamental
+      property of the Agent SDK's design for isolation and controlled information flow.
+    docLink:
+      text: "Subagent context passing"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "Context window management"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      B:
+        text: "Coordinator system prompt design"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "Subagent context isolation and explicit passing"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      D:
+        text: "Structured data exchange between agents"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: d1_resume
+    taskStatement: "1.7"
+    question: |
+      You are resuming a long codebase investigation session from yesterday. Since the
+      session ended, several key files in the authentication module were refactored. What
+      is the most effective resumption strategy?
+    options:
+      A: "Resume the session with --resume and explicitly inform the agent about which files changed, so it can re-analyze just those."
+      B: "Simply run --resume; the agent will detect file system changes automatically."
+      C: "Start a completely new session since any prior tool results involving changed files are now stale."
+      D: "Use fork_session to create a branch and then re-analyze all files from scratch within the branch."
+    correct: A
+    explanation: |
+      The recommended approach when resuming after file changes is to inform the agent about
+      specific file changes for targeted re-analysis, rather than requiring full re-exploration.
+      The agent cannot detect file system changes automatically. Starting fresh (C) wastes all
+      the valid prior investigation context. fork_session (D) is for exploring divergent
+      approaches, not for incremental re-analysis.
+    docLink:
+      text: "Claude Code session management"
+      url: "https://code.claude.com/docs"
+    optionLinks:
+      A:
+        text: "--resume with targeted re-analysis"
+        url: "https://code.claude.com/docs"
+      B:
+        text: "Automatic change detection limitations"
+        url: "https://code.claude.com/docs"
+      C:
+        text: "Starting fresh vs resuming sessions"
+        url: "https://code.claude.com/docs"
+      D:
+        text: "fork_session — when to use branching"
+        url: "https://code.claude.com/docs"

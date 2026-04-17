@@ -1,0 +1,293 @@
+# Domain 5: Context Management & Reliability (15%)
+# Add new questions by appending to the `questions` list below.
+
+questions:
+
+  - id: d5_litm
+    taskStatement: "5.1"
+    question: |
+      Your multi-agent research system collects findings from 8 specialized subagents and
+      passes all results to a synthesis agent in one large input. Despite comprehensive
+      research, the synthesis agent consistently omits findings from 3-4 subagents in the
+      middle of the input. What is the root cause and most effective fix?
+    options:
+      A: "The middle subagents are producing lower quality findings; improve their research prompts."
+      B: "The synthesis context is too large; reduce the number of subagents to 4-5."
+      C: "The 'lost in the middle' effect causes models to underweight information in the middle of long inputs; place key finding summaries at the beginning and use explicit section headers."
+      D: "The synthesis agent's context window is full; trim all subagent outputs equally to fit."
+    correct: C
+    explanation: |
+      The "lost in the middle" effect is well-documented: models reliably process information
+      at the beginning and end of long inputs but may omit findings from middle sections. The
+      fix is to place key findings summaries at the beginning of aggregated inputs and organize
+      detailed results with explicit section headers. Reducing subagents (B) is a workaround
+      that limits research coverage. Equal trimming (D) doesn't address position effects.
+    docLink:
+      text: "Context management patterns"
+      url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+    optionLinks:
+      A:
+        text: "Subagent output quality improvement"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      B:
+        text: "Reducing agent count as a workaround"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "Lost-in-the-middle effect and mitigation"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      D:
+        text: "Trimming and context window management"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+
+  - id: d5_trim
+    taskStatement: "5.1"
+    question: |
+      Your customer support agent calls get_order() which returns 45 fields including
+      warehouse location, SKU dimensions, supplier codes, and other data irrelevant to
+      support scenarios. After several turns, the conversation fills with this verbose
+      tool output. What is the most targeted fix?
+    options:
+      A: "Use the Message Batches API to process long conversations asynchronously."
+      B: "Trim tool results to only the fields relevant to support scenarios before appending them to conversation context."
+      C: "Implement a summarization step every 5 turns to compress the entire conversation."
+      D: "Switch to a model with a larger context window so the verbose data fits."
+    correct: B
+    explanation: |
+      Tool results accumulate in context and consume tokens disproportionate to their
+      relevance. Trimming verbose tool outputs to only relevant fields before they accumulate
+      is the targeted, efficient fix. Batch processing (A) is for throughput, not context
+      management. Periodic summarization (C) risks losing important transactional facts.
+      A larger context window (D) is expensive and treats the symptom rather than the cause.
+    docLink:
+      text: "Context window optimization"
+      url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+    optionLinks:
+      A:
+        text: "Message Batches API — use cases"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      B:
+        text: "Trimming tool results before context injection"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      C:
+        text: "Periodic summarization strategies"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      D:
+        text: "Context window size — when it helps vs. doesn't"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+
+  - id: d5_escalate_explicit
+    taskStatement: "5.2"
+    question: |
+      A customer messages: "I've already talked to three agents and no one has helped me.
+      I don't want a bot, I need to talk to a real person right now." What should the
+      agent do?
+    options:
+      A: "Acknowledge the frustration, then attempt to resolve the issue before escalating to avoid wasting human agent time."
+      B: "Escalate immediately to a human agent since the customer has made an explicit request."
+      C: "Explain that the bot can likely resolve the issue quickly and offer to proceed."
+      D: "Ask clarifying questions to fully understand the issue before deciding whether escalation is warranted."
+    correct: B
+    explanation: |
+      Explicit customer requests for a human agent must be honored immediately — this is a
+      hard rule, not a heuristic. The agent should not first attempt investigation or offer
+      to resolve the issue. Acknowledging frustration while offering resolution (A) is
+      appropriate only if the customer hasn't explicitly demanded a human. Attempting to
+      proceed despite an explicit request (C, D) undermines trust and violates the customer's
+      stated preference.
+    docLink:
+      text: "Escalation decision patterns"
+      url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+    optionLinks:
+      A:
+        text: "Attempt-first vs escalate-first strategies"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      B:
+        text: "Honoring explicit escalation requests"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      C:
+        text: "Bot-first design and customer trust"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      D:
+        text: "Clarifying questions before escalation"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+
+  - id: d5_error_prop
+    taskStatement: "5.3"
+    question: |
+      A subagent's database query times out. Instead of propagating structured error
+      context, the subagent silently catches the exception and returns an empty result
+      marked as successful (result: [], success: true). What problem does this create?
+    options:
+      A: "The coordinator loses all visibility into what the subagent attempted, preventing intelligent recovery such as retrying with a modified query or proceeding with partial results."
+      B: "The downstream synthesis step will fail when it tries to aggregate empty data."
+      C: "The coordinator will detect the empty result and retry the subagent indefinitely."
+      D: "This is acceptable behavior — empty results are a valid signal that the query found no data."
+    correct: A
+    explanation: |
+      Silently suppressing errors by returning empty results as success is explicitly an
+      anti-pattern. It deprives the coordinator of critical information: what failed, what
+      was attempted, whether a retry might succeed, or whether the workflow should proceed
+      with partial results. The coordinator cannot distinguish a legitimate "no results" from
+      a failed query. Option D is incorrect — the guide explicitly identifies this as an
+      anti-pattern.
+    docLink:
+      text: "Error propagation in multi-agent systems"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "Structured error propagation to coordinators"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      B:
+        text: "Downstream failure from empty results"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "Coordinator retry behavior"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      D:
+        text: "Empty result vs error — the distinction"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: d5_provenance
+    taskStatement: "5.6"
+    question: |
+      Your research synthesis agent combines findings from 6 sources but strips source
+      attribution during summarization. When stakeholders ask "where does this claim come
+      from?", you can't answer. What structural change prevents this problem?
+    options:
+      A: "Require subagents to output structured claim-source mappings (source URLs, document names, relevant excerpts) that downstream agents must preserve through synthesis."
+      B: "Add a post-synthesis citation step that looks up original sources after the report is generated."
+      C: "Require the synthesis agent to list all consulted sources at the end of the report as a bibliography."
+      D: "Store all raw subagent outputs separately and add hyperlinks to them from the final report."
+    correct: A
+    explanation: |
+      Source attribution is lost when findings are compressed without preserving claim-source
+      mappings. The fix is requiring subagents to output structured claim-source mappings and
+      mandating that downstream agents preserve these mappings through synthesis.
+      Post-synthesis citation lookup (B) is unreliable when specific claims need to be traced
+      to specific passages. A bibliography (C) doesn't establish which claims came from which
+      sources.
+    docLink:
+      text: "Information provenance in multi-agent systems"
+      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+    optionLinks:
+      A:
+        text: "Structured claim-source mappings"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      B:
+        text: "Post-synthesis citation lookup"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      C:
+        text: "Bibliography vs inline attribution"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      D:
+        text: "Raw output storage and linking"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: d5_confidence
+    taskStatement: "5.5"
+    question: |
+      Your document extraction system reports 96% overall accuracy. Your manager proposes
+      eliminating human review for all high-confidence extractions based on this metric.
+      What is the appropriate response?
+    options:
+      A: "Accept the proposal — 96% accuracy is high enough to eliminate human review safely."
+      B: "Aggregate accuracy metrics may mask poor performance on specific document types or fields; validate accuracy by segment before reducing human review."
+      C: "Implement 10% stratified sampling immediately and reduce human review for the other 90%."
+      D: "Keep full human review until accuracy reaches 99% across all document types."
+    correct: B
+    explanation: |
+      Aggregate accuracy metrics (e.g., 96% overall) may mask poor performance on specific
+      document types or fields. Before automating high-confidence extractions, validate
+      accuracy by document type and field segment to verify consistent performance. A 96%
+      aggregate could hide, for example, 70% accuracy on handwritten invoices if they're a
+      small fraction of volume. Stratified random sampling (C) is a useful ongoing tool, but
+      the first step is segmented validation.
+    docLink:
+      text: "Human review workflows & confidence calibration"
+      url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+    optionLinks:
+      A:
+        text: "Accuracy thresholds for automation"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      B:
+        text: "Segmented accuracy validation by document type"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      C:
+        text: "Stratified sampling for ongoing QA"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      D:
+        text: "Setting accuracy targets for human review reduction"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+
+  - id: d5_scratchpad
+    taskStatement: "5.4"
+    question: |
+      After several hours of exploring a large codebase, you notice Claude Code is starting
+      to give inconsistent answers about module dependencies and occasionally references
+      "typical patterns" rather than the specific classes it found earlier in the session.
+      What is the most effective response to context degradation?
+    options:
+      A: "Use /compact to compress the conversation and continue exploring."
+      B: "Restart the session from scratch with a more focused initial prompt."
+      C: "Have the agent maintain scratchpad files recording key findings (class names, dependencies, patterns), and instruct it to reference these files when answering subsequent questions."
+      D: "Reduce the scope of remaining exploration to prevent further context degradation."
+    correct: C
+    explanation: |
+      Scratchpad files persist key findings across context boundaries, counteracting context
+      degradation. By recording specific discoveries (class names, dependencies, patterns) to
+      files and referencing them in subsequent prompts, the agent can reliably access earlier
+      findings even when they've left the active context window. /compact (A) compresses but
+      loses detail. Restarting (B) wastes all accumulated investigation. Reducing scope (D)
+      limits the investigation without addressing the underlying issue.
+    docLink:
+      text: "Context management in large codebase exploration"
+      url: "https://code.claude.com/docs"
+    optionLinks:
+      A:
+        text: "/compact — conversation compression"
+        url: "https://code.claude.com/docs"
+      B:
+        text: "Restarting sessions — when it makes sense"
+        url: "https://code.claude.com/docs"
+      C:
+        text: "Scratchpad files for persistent findings"
+        url: "https://code.claude.com/docs"
+      D:
+        text: "Scoping to prevent context overflow"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+
+  - id: d5_policy_gap
+    taskStatement: "5.2"
+    question: |
+      A customer requests a price match with a competitor's current promotional price.
+      Your company's policy document covers price matching for your own historical prices
+      and seasonal discounts, but is silent on competitor price matching. What should
+      the agent do?
+    options:
+      A: "Deny the request since the policy doesn't explicitly authorize competitor price matching."
+      B: "Approve the request since the policy doesn't explicitly prohibit competitor price matching."
+      C: "Escalate to a human agent since the request falls into a policy gap the agent cannot resolve autonomously."
+      D: "Ask the customer for proof of the competitor's price, then use judgment to decide."
+    correct: C
+    explanation: |
+      Escalation is appropriate when policy is ambiguous or silent on the customer's specific
+      request. When a policy gap exists (the policy doesn't address the specific situation),
+      the agent should escalate rather than make autonomous decisions that could commit the
+      company to unintended obligations or inappropriately deny valid requests. Neither
+      approving (B) nor denying (A) is appropriate without policy clarity.
+    docLink:
+      text: "Escalation patterns for policy gaps"
+      url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+    optionLinks:
+      A:
+        text: "Default-deny for unspecified policies"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      B:
+        text: "Default-allow for unspecified policies"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      C:
+        text: "Escalation for policy gaps and ambiguity"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+      D:
+        text: "Agent judgment in unspecified scenarios"
+        url: "https://platform.claude.com/docs/en/build-with-claude/overview"
