@@ -244,17 +244,332 @@ questions:
       exploration scope (D) risks missing important dependencies.
     docLink:
       text: "Plan mode & Explore subagent"
-      url: "https://code.claude.com/docs"
+      url: "https://code.claude.com/docs/en/best-practices"
     optionLinks:
       A:
         text: "/compact — conversation compression"
-        url: "https://code.claude.com/docs"
+        url: "https://code.claude.com/docs/en/best-practices"
       B:
         text: "Starting a new session — when it makes sense"
-        url: "https://code.claude.com/docs"
+        url: "https://code.claude.com/docs/en/best-practices"
       C:
         text: "Explore subagent — isolated discovery"
-        url: "https://code.claude.com/docs"
+        url: "https://code.claude.com/docs/en/sub-agents"
       D:
         text: "Scoping codebase exploration"
-        url: "https://code.claude.com/docs"
+        url: "https://code.claude.com/docs/en/best-practices"
+
+  - id: d3_iterative_01
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "3.5"
+    question: |
+      You ask Claude Code to refactor a date formatting utility to handle international
+      formats. After three attempts, the output is inconsistent: sometimes it produces
+      DD/MM/YYYY, sometimes MM-DD-YYYY, and it mishandles single-digit months. Your
+      prose descriptions of the expected behavior keep being interpreted differently.
+      What is the most effective way to get consistent results?
+    options:
+      A: "Add more detailed natural language instructions specifying every date format rule, including locale handling and zero-padding requirements."
+      B: "Provide 2-3 concrete input/output examples showing the exact transformations you expect, including edge cases like single-digit months."
+      C: "Switch to plan mode so Claude can analyze the existing date utility before attempting the refactor."
+      D: "Break the task into smaller sub-tasks, asking Claude to handle one date format per message."
+    correct: B
+    explanation: |
+      When natural language descriptions are interpreted inconsistently, concrete input/output
+      examples are the most effective way to communicate expected transformations. Examples like
+      "Input: '2024-1-5' → Output: '05/01/2024'" eliminate ambiguity that prose descriptions
+      cannot resolve. More detailed prose (A) adds volume but doesn't resolve the interpretation
+      inconsistency — the problem is ambiguity, not missing detail. Plan mode (C) helps with
+      understanding code structure but doesn't address the specification gap. Breaking into
+      sub-tasks (D) fragments the context unnecessarily when the core issue is unclear
+      requirements.
+    docLink:
+      text: "Best practices — iterative refinement"
+      url: "https://code.claude.com/docs/en/best-practices"
+    optionLinks:
+      A:
+        text: "Providing specific context in prompts"
+        url: "https://code.claude.com/docs/en/best-practices"
+      B:
+        text: "Concrete examples for consistent output"
+        url: "https://code.claude.com/docs/en/best-practices"
+      C:
+        text: "Plan mode for safe exploration"
+        url: "https://code.claude.com/docs/en/common-workflows"
+      D:
+        text: "Task decomposition strategies"
+        url: "https://code.claude.com/docs/en/best-practices"
+
+  - id: d3_iterative_02
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "3.5"
+    question: |
+      You are implementing a caching layer for your API but are unfamiliar with the
+      codebase's existing data access patterns, cache invalidation strategies, and
+      failure modes. Rather than jumping straight to implementation, you want Claude
+      to help you surface considerations you may not have anticipated. Which iterative
+      approach is most appropriate?
+    options:
+      A: "Write a test suite first covering expected caching behavior, then have Claude implement code to pass the tests."
+      B: "Use the interview pattern: ask Claude to interview you about the caching requirements, surfacing design considerations like invalidation strategies, failure modes, and edge cases before implementing."
+      C: "Provide 2-3 input/output examples showing expected cache hit/miss behavior and let Claude infer the design."
+      D: "Start with direct execution and iterate on the implementation as issues emerge during testing."
+    correct: B
+    explanation: |
+      The interview pattern is specifically designed for scenarios where you're working in an
+      unfamiliar domain and want to surface considerations you haven't anticipated. Having
+      Claude ask about cache invalidation strategies, TTL policies, failure modes, and
+      consistency requirements ensures nothing important is missed before implementation begins.
+      Test-driven iteration (A) is powerful but requires you to already know what to test —
+      difficult when you're unfamiliar with the design space. Input/output examples (C) work
+      for transformation tasks, not architectural design. Direct execution (D) risks costly
+      rework when design flaws are discovered late.
+    docLink:
+      text: "Best practices — let Claude interview you"
+      url: "https://code.claude.com/docs/en/best-practices"
+    optionLinks:
+      A:
+        text: "Test-driven iteration"
+        url: "https://code.claude.com/docs/en/best-practices"
+      B:
+        text: "Interview pattern for design discovery"
+        url: "https://code.claude.com/docs/en/best-practices"
+      C:
+        text: "Input/output examples for transformation tasks"
+        url: "https://code.claude.com/docs/en/best-practices"
+      D:
+        text: "Direct execution vs exploration"
+        url: "https://code.claude.com/docs/en/common-workflows"
+
+  - id: d3_import_pkg_01
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "3.1"
+    question: |
+      Your monorepo has shared instructions for everyone plus package-specific standards
+      for `packages/web`, `services/api`, and `infra/terraform`. The root `CLAUDE.md` has
+      grown to 260 lines, and frontend-only guidance is distracting backend work. You want
+      to keep the root file concise while still loading package-specific guidance when
+      Claude works in the relevant area. What is the best approach?
+    options:
+      A: "Keep everything in the root `CLAUDE.md`, but add clearer headings for each package section."
+      B: "Create a `packages/web/CLAUDE.md` that imports `@./docs/web-standards.md`, and do the same per package so imports resolve relative to each package file."
+      C: "Move package-specific rules into `~/.claude/CLAUDE.md` so developers can opt into the packages they work on most."
+      D: "Put package standards in each package README and rely on Claude to read them when needed."
+    correct: B
+    explanation: |
+      B is correct because `CLAUDE.md` supports `@path/to/import` syntax, and relative
+      imports resolve relative to the file containing the import. Using package-level
+      `CLAUDE.md` files lets you keep shared rules at the root while selectively loading
+      detailed standards only when Claude works in that package. A keeps the always-loaded
+      file bloated. C makes team rules personal instead of version-controlled. D depends on
+      opportunistic reading rather than persistent memory loading.
+    docLink:
+      text: "How Claude remembers your project"
+      url: "https://code.claude.com/docs/en/memory"
+    optionLinks:
+      A:
+        text: "Keeping CLAUDE.md concise"
+        url: "https://code.claude.com/docs/en/memory"
+      B:
+        text: "Import additional files with @ syntax"
+        url: "https://code.claude.com/docs/en/memory"
+      C:
+        text: "User vs project CLAUDE.md scope"
+        url: "https://code.claude.com/docs/en/memory"
+      D:
+        text: "How CLAUDE.md files load"
+        url: "https://code.claude.com/docs/en/memory"
+
+  - id: d3_memory_inspect_01
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "3.1"
+    question: |
+      After reorganizing your repository, one developer says Claude is still applying an
+      old security rule from a parent directory while another says the new Terraform
+      guidance under `.claude/rules/` is not loading at all. Before you rewrite the memory
+      hierarchy, what is the fastest way to verify exactly which memory files are active in
+      the current session?
+    options:
+      A: "Run `/memory` to list the loaded `CLAUDE.md`, `CLAUDE.local.md`, and rules files, then open the relevant ones from there."
+      B: "Ask Claude to summarize its current instructions from memory and treat that summary as authoritative."
+      C: "Restart Claude Code with `--resume` so it reloads the memory stack from scratch."
+      D: "Delete the root `CLAUDE.md` and let auto memory rebuild the missing instructions over time."
+    correct: A
+    explanation: |
+      A is correct because `/memory` is the built-in way to inspect which memory files are
+      loaded in the current session. It lists `CLAUDE.md`, `CLAUDE.local.md`, and rules
+      files and lets you open them directly, which makes it the right first debugging step.
+      B is unreliable because paraphrases can omit or blur the real source files. C resumes
+      a session but does not solve the inspection problem. D is destructive and unrelated to
+      debugging the active hierarchy.
+    docLink:
+      text: "View and edit with /memory"
+      url: "https://code.claude.com/docs/en/memory"
+    optionLinks:
+      A:
+        text: "View and edit with /memory"
+        url: "https://code.claude.com/docs/en/memory"
+      B:
+        text: "How CLAUDE.md files load"
+        url: "https://code.claude.com/docs/en/memory"
+      C:
+        text: "CLI reference"
+        url: "https://code.claude.com/docs/en/cli-reference"
+      D:
+        text: "Auto memory overview"
+        url: "https://code.claude.com/docs/en/memory"
+
+  - id: d3_rule_glob_01
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "3.3"
+    question: |
+      Your company enforces special conventions for SQL migration files, but those files
+      live in `services/*/db/migrations/`, `packages/reporting/sql/`, and `ops/backfills/`.
+      A subdirectory `CLAUDE.md` in any one tree only covers part of the estate, and the
+      root file is getting noisy. Which configuration is most maintainable?
+    options:
+      A: "Create one rule in `.claude/rules/sql-migrations.md` with YAML frontmatter `paths` glob patterns matching migration files across the repo."
+      B: "Add a long section to the root `CLAUDE.md` describing every migration directory and expect Claude to infer when it applies."
+      C: "Create a `CLAUDE.md` file in each migration directory and manually keep their contents synchronized."
+      D: "Turn the migration guidance into a skill so Claude loads it automatically whenever it sees `.sql` files."
+    correct: A
+    explanation: |
+      A is correct because path-scoped rules are designed for cross-directory conventions.
+      A single `.claude/rules/` file with `paths` glob patterns lets the same instruction
+      load whenever matching files are read, regardless of where they sit in the repo. B
+      adds always-loaded noise. C creates duplication and drift. D is wrong because skills
+      are on-demand rather than automatic path-scoped memory.
+    docLink:
+      text: "Path-specific rules"
+      url: "https://code.claude.com/docs/en/memory"
+    optionLinks:
+      A:
+        text: "Path-specific rules with paths glob patterns"
+        url: "https://code.claude.com/docs/en/memory"
+      B:
+        text: "Write effective instructions"
+        url: "https://code.claude.com/docs/en/memory"
+      C:
+        text: "How CLAUDE.md files load"
+        url: "https://code.claude.com/docs/en/memory"
+      D:
+        text: "Commands"
+        url: "https://code.claude.com/docs/en/commands"
+
+  - id: d3_ci_schema_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "3.6"
+    question: |
+      Your PR-review workflow currently runs Claude Code in print mode and then parses the
+      free-text output with fragile regexes to create GitHub annotations. Small wording
+      changes routinely break the parser, causing valid findings to disappear from the CI
+      report. What is the best fix?
+    options:
+      A: "Keep plain text output and make the regexes more permissive so they tolerate wording changes."
+      B: "Run Claude with `-p --output-format json --json-schema ...` so CI receives machine-parseable structured output in a stable shape."
+      C: "Switch from `-p` to interactive mode so Claude can ask follow-up questions before returning findings."
+      D: "Ask Claude to always format the report as a Markdown table and parse the table cells instead."
+    correct: B
+    explanation: |
+      B is correct because CI integrations should consume structured output, not scrape
+      conversational text. `--output-format json` returns JSON metadata, and `--json-schema`
+      lets you constrain the structured result into a stable machine-readable shape. A and D
+      still rely on brittle text parsing. C breaks automation because CI needs non-interactive
+      execution.
+    docLink:
+      text: "Run Claude Code programmatically"
+      url: "https://code.claude.com/docs/en/headless"
+    optionLinks:
+      A:
+        text: "Headless usage"
+        url: "https://code.claude.com/docs/en/headless"
+      B:
+        text: "Structured output in headless mode"
+        url: "https://code.claude.com/docs/en/headless"
+      C:
+        text: "CLI reference"
+        url: "https://code.claude.com/docs/en/cli-reference"
+      D:
+        text: "Claude Code GitHub Actions"
+        url: "https://code.claude.com/docs/en/github-actions"
+
+  - id: d3_ci_context_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "3.6"
+    question: |
+      Your nightly "generate tests for this PR" workflow keeps proposing duplicate tests
+      that already exist under `tests/integration/`, and on reruns it reposts issues that
+      the team already fixed in the previous review cycle. The job only passes Claude the
+      raw diff. Which change most directly improves output quality?
+    options:
+      A: "Increase the model size and token budget so Claude can infer more of the repository's testing strategy from the diff alone."
+      B: "Provide prior review findings plus representative existing test files, and document project testing standards in `CLAUDE.md` so CI-invoked Claude has durable context."
+      C: "Lower temperature to zero and keep the prompt unchanged so the output becomes more deterministic."
+      D: "Run the workflow less often so developers see fewer repeated suggestions."
+    correct: B
+    explanation: |
+      B is correct because the current workflow is missing key project context. Passing prior
+      findings helps Claude report only new or unresolved issues, while giving it existing
+      test files and durable testing guidance in `CLAUDE.md` reduces duplicate or off-style
+      suggestions. A treats missing context as a model-size problem. C may make repetition
+      more consistent, not more useful. D hides the symptom without improving review quality.
+    docLink:
+      text: "Claude Code GitHub Actions"
+      url: "https://code.claude.com/docs/en/github-actions"
+    optionLinks:
+      A:
+        text: "Run Claude Code programmatically"
+        url: "https://code.claude.com/docs/en/headless"
+      B:
+        text: "CLAUDE.md configuration in GitHub Actions"
+        url: "https://code.claude.com/docs/en/github-actions"
+      C:
+        text: "CLI reference"
+        url: "https://code.claude.com/docs/en/cli-reference"
+      D:
+        text: "Claude Code GitHub Actions"
+        url: "https://code.claude.com/docs/en/github-actions"
+
+  - id: d3_personal_skill_variant_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "3.2"
+    question: |
+      Your repository includes a shared `/release-check` skill in
+      `.claude/skills/release-check/SKILL.md` that 18 engineers use before tagging a
+      production build. One staff engineer needs extra audit steps only on their own
+      machine, so they create `~/.claude/skills/release-check/SKILL.md`. After that,
+      their `/release-check` no longer follows the team workflow. What is the best way
+      to keep the shared project skill intact while also giving that engineer a personal
+      variant?
+    options:
+      A: "Move the extra audit steps into `~/.claude/CLAUDE.md` so `/release-check` automatically combines both instruction sources."
+      B: "Keep the personal skill named `release-check`; Claude merges same-named skills across scopes when the command is invoked."
+      C: "Rename the personal skill to a different name such as `release-check-audit` under `~/.claude/skills/`, then invoke it separately when needed."
+      D: "Recreate the personal workflow as `~/.claude/commands/release-check.md` so the personal command can coexist with the project skill under the same slash command."
+    correct: C
+    explanation: |
+      C is correct because skills are discovered from personal and project locations, but
+      same-named skills do not merge. Higher-priority locations win, and personal skills
+      override project skills with the same name. Giving the personal variant a different
+      name preserves the shared `/release-check` while adding a separate user-specific
+      workflow. A is wrong because `CLAUDE.md` is always-loaded memory, not a separate
+      slash-command workflow. B is wrong because same-named skills do not combine at
+      invocation time; one definition wins by precedence. D is wrong because commands and
+      skills use the same mechanism, and if a skill and command share a name, the skill
+      takes precedence.
+    docLink:
+      text: "Skills — where skills live"
+      url: "https://code.claude.com/docs/en/skills#where-skills-live"
+    optionLinks:
+      A:
+        text: "CLAUDE.md vs Skill"
+        url: "https://code.claude.com/docs/en/features-overview#claude-md-vs-skill"
+      B:
+        text: "Skill scope and precedence"
+        url: "https://code.claude.com/docs/en/skills#where-skills-live"
+      C:
+        text: "Personal vs project skills"
+        url: "https://code.claude.com/docs/en/skills#where-skills-live"
+      D:
+        text: "Commands and skills precedence"
+        url: "https://code.claude.com/docs/en/skills#where-skills-live"

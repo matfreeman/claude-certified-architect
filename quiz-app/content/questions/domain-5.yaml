@@ -291,3 +291,492 @@ questions:
       D:
         text: "Agent judgment in unspecified scenarios"
         url: "https://platform.claude.com/docs/en/build-with-claude/overview"
+
+  - id: d5_subagent_context_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "5.4"
+    question: |
+      You are using Claude Code to investigate a production bug in a large e-commerce
+      application. After 45 minutes of exploration, the agent has read 30+ files and
+      built a detailed mental model of the payment processing flow. You now need to
+      investigate how the inventory service interacts with the same payment flow, which
+      will require reading another 20+ files. The context window is 70% full. What is
+      the most effective approach?
+    options:
+      A: "Use /compact to compress the conversation history and continue investigating in the same session."
+      B: "Spawn a subagent to investigate the inventory service interaction, keeping the main agent's payment flow understanding intact for coordination."
+      C: "Start a completely new session focused on the inventory service and manually cross-reference findings."
+      D: "Read only the most critical inventory files to minimize additional context consumption."
+    correct: B
+    explanation: |
+      Spawning a subagent to investigate the inventory service isolates the verbose file-reading
+      output in a separate context window. The subagent reports back a concise summary, and the
+      main agent retains its rich payment flow understanding for coordination and synthesis.
+      Using /compact (A) compresses the existing context but the new 20+ file reads will
+      rapidly fill it again. Starting a new session (C) discards the valuable payment flow
+      analysis. Limiting reads (D) risks an incomplete investigation that misses critical
+      interaction points.
+    docLink:
+      text: "Context management with subagents"
+      url: "https://code.claude.com/docs/en/best-practices"
+    optionLinks:
+      A:
+        text: "/compact — managing context in long sessions"
+        url: "https://code.claude.com/docs/en/best-practices"
+      B:
+        text: "Subagents for investigation isolation"
+        url: "https://code.claude.com/docs/en/sub-agents"
+      C:
+        text: "Session management — when to start fresh"
+        url: "https://code.claude.com/docs/en/best-practices"
+      D:
+        text: "Context window limits and token management"
+        url: "https://code.claude.com/docs/en/context-window"
+
+  - id: d5_error_context_01
+    scenario: "Multi-Agent Research System"
+    taskStatement: "5.3"
+    question: |
+      Your coordinator agent is assembling a semiconductor market brief from three
+      subagents. The filings subagent returns `status: failed, message: "search unavailable"`
+      after trying two SEC queries, while the web and analyst-note subagents succeed.
+      Because the error payload has no detail, the coordinator cannot decide whether to
+      retry, narrow the search, or continue with partial coverage. What change most
+      improves recovery?
+    options:
+      A: "Increase the filings subagent timeout from 15 seconds to 60 seconds so fewer errors reach the coordinator."
+      B: "Return structured error context that includes the failure type, attempted queries, any partial results, and possible fallback approaches so the coordinator can choose the next step intelligently."
+      C: "Convert all source failures into empty successful results so synthesis can continue without interruption."
+      D: "Abort the entire workflow whenever any single source lookup fails to avoid incomplete reports."
+    correct: B
+    explanation: |
+      B is correct because the coordinator needs structured error context to make a recovery
+      decision: what failed, what was attempted, whether anything usable was found, and what
+      fallback is still available. A may reduce some timeouts, but it does not solve the core
+      problem that the coordinator lacks actionable failure detail. C is an anti-pattern
+      because it hides access failures and makes them indistinguishable from legitimate empty
+      results. D overreacts to a single-source failure and prevents the coordinator from
+      proceeding with partial coverage when that would still be useful.
+    docLink:
+      text: "Handle tool calls"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls"
+    optionLinks:
+      A:
+        text: "Tool Runner (SDK)"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner"
+      B:
+        text: "Handle tool calls"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls"
+      C:
+        text: "Handle tool calls"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls"
+      D:
+        text: "Create custom subagents"
+        url: "https://code.claude.com/docs/en/sub-agents"
+
+  - id: d5_error_recovery_02
+    scenario: "Multi-Agent Research System"
+    taskStatement: "5.3"
+    question: |
+      Your market-intelligence coordinator asks a news subagent to gather export-control
+      updates from two paid feeds and web search. In 18% of runs, one paid feed returns
+      HTTP 429 for 30-60 seconds, and the subagent immediately bubbles the error to the
+      coordinator. The coordinator restarts the whole workflow, adding 90 seconds and
+      duplicate tool calls even though other sources were already collected. What change
+      best improves reliability?
+    options:
+      A: "Configure the coordinator to rerun the entire workflow twice whenever any subagent errors."
+      B: "Treat the rate limit as a valid empty result if at least one other source returned data."
+      C: "Have the subagent perform local recovery for transient failures, such as backoff retries or switching to the alternate source, and propagate an unresolved error only with what it already tried and any partial results."
+      D: "Remove the paid feed from the subagent so only the more reliable web search tool remains."
+    correct: C
+    explanation: |
+      C is correct because transient failures should be handled locally when possible, with
+      unresolved errors propagated only after the subagent reports what it tried and what it
+      was still able to collect. A wastes time and money by rerunning healthy parts of the
+      workflow. B is incorrect because a rate limit is an access failure, not a legitimate
+      "no matches" result. D reduces coverage permanently instead of fixing the recovery path
+      for intermittent failures.
+    docLink:
+      text: "Tool Runner (SDK)"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner"
+    optionLinks:
+      A:
+        text: "Create custom subagents"
+        url: "https://code.claude.com/docs/en/sub-agents"
+      B:
+        text: "Handle tool calls"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls"
+      C:
+        text: "Tool Runner (SDK)"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner"
+      D:
+        text: "Create custom subagents"
+        url: "https://code.claude.com/docs/en/sub-agents"
+
+  - id: d5_calibration_01
+    scenario: "Structured Data Extraction"
+    taskStatement: "5.5"
+    question: |
+      Your extraction pipeline processes 40,000 vendor onboarding forms per day.
+      A single document-level confidence score of 0.97 is used to auto-approve records,
+      but post-audit shows bank routing numbers are wrong on 6% of handwritten forms even
+      when overall document confidence stays above 0.95 because names and addresses extract
+      correctly. What is the best fix?
+    options:
+      A: "Raise the document-level auto-approval threshold from 0.95 to 0.99 for all forms."
+      B: "Ask the model to produce a prose explanation of uncertainty instead of structured values."
+      C: "Run two additional extraction passes and auto-approve whichever value appears most often."
+      D: "Have the model emit field-level confidence scores and calibrate review thresholds against a labeled validation set so high-risk fields can be reviewed separately."
+    correct: D
+    explanation: |
+      D is correct because the failure is field-specific, so review routing also needs to be
+      field-specific. Structured outputs let you emit per-field confidence, and calibration on
+      labeled validation data helps you set thresholds that reflect real error rates. A still
+      relies on one coarse score and may either miss bad routing numbers or over-review safe
+      documents. B replaces machine-readable signals with vague prose that is harder to route
+      on consistently. C adds cost and complexity without proving that majority agreement
+      corresponds to calibrated accuracy for the risky field.
+    docLink:
+      text: "Get structured output from agents"
+      url: "https://code.claude.com/docs/en/agent-sdk/structured-outputs"
+    optionLinks:
+      A:
+        text: "Define success criteria and build evaluations"
+        url: "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests#eval-design-principles"
+      B:
+        text: "Get structured output from agents"
+        url: "https://code.claude.com/docs/en/agent-sdk/structured-outputs"
+      C:
+        text: "Define success criteria and build evaluations"
+        url: "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests#grade-your-evaluations"
+      D:
+        text: "Define success criteria and build evaluations"
+        url: "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests#eval-design-principles"
+
+  - id: d5_sampling_02
+    scenario: "Structured Data Extraction"
+    taskStatement: "5.5"
+    question: |
+      Six weeks after reducing manual review, your invoice extraction system now
+      auto-approves 82% of documents above 0.98 confidence. A new supplier template in the
+      APAC region swaps tax ID and invoice number, but because those records still score high
+      confidence, the issue is discovered only after finance reconciliation. What ongoing
+      control most directly catches this kind of drift without sending everything back to
+      humans?
+    options:
+      A: "Use stratified random sampling of high-confidence extractions by document type, region, and critical field to measure live error rates and catch novel patterns."
+      B: "Return all high-confidence documents to full human review for one week each quarter."
+      C: "Lower the approval threshold globally until no sampled errors are found."
+      D: "Require the model to explain its reasoning before every extraction so reviewers can inspect the longer output."
+    correct: A
+    explanation: |
+      A is correct because stratified sampling checks whether the supposedly safe segment is
+      still performing well across the slices that matter, which is how you catch drift and
+      new templates that a confidence threshold misses. B is expensive and leaves long blind
+      periods between review windows. C treats the symptom globally instead of measuring where
+      the real problem sits. D increases output volume but does not create a reliable ongoing
+      measurement loop for high-confidence extractions.
+    docLink:
+      text: "Define success criteria and build evaluations"
+      url: "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests#eval-design-principles"
+    optionLinks:
+      A:
+        text: "Define success criteria and build evaluations"
+        url: "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests#eval-design-principles"
+      B:
+        text: "Define success criteria and build evaluations"
+        url: "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests#grade-your-evaluations"
+      C:
+        text: "Define success criteria and build evaluations"
+        url: "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests#eval-design-principles"
+      D:
+        text: "Get structured output from agents"
+        url: "https://code.claude.com/docs/en/agent-sdk/structured-outputs"
+
+  - id: d5_conflict_dates_01
+    scenario: "Multi-Agent Research System"
+    taskStatement: "5.6"
+    question: |
+      Your research pipeline is building a market brief for executives. The synthesis
+      agent receives two credible figures for active users: 1.8 million from a Q4 2025
+      shareholder letter and 2.4 million from a March 2026 analyst note, but the current
+      report template forces one numeric value per metric. Reviewers keep flagging the brief
+      as inconsistent. What should the synthesis layer do?
+    options:
+      A: "Prefer the newest figure automatically and remove the older one so the report contains a single clean number."
+      B: "Average the two figures and cite both sources to avoid showing a conflict."
+      C: "Preserve both figures with source attribution and publication dates, explain that the difference may be temporal rather than contradictory, and mark the metric as contested until it is reconciled."
+      D: "Choose the figure repeated by more secondary articles because frequency is the best proxy for correctness."
+    correct: C
+    explanation: |
+      C is correct because credible sources can differ for valid reasons, including different
+      publication dates. The synthesis layer should preserve the claim-source mapping, keep
+      the dates, and present the metric as contested rather than fabricating certainty. A
+      discards relevant evidence just to force a single answer. B invents a blended value that
+      neither source actually reported. D treats repetition as proof and can amplify the wrong
+      source instead of preserving provenance.
+    docLink:
+      text: "Citations"
+      url: "https://platform.claude.com/docs/en/build-with-claude/citations"
+    optionLinks:
+      A:
+        text: "Search results"
+        url: "https://platform.claude.com/docs/en/build-with-claude/search-results"
+      B:
+        text: "Citations"
+        url: "https://platform.claude.com/docs/en/build-with-claude/citations"
+      C:
+        text: "Search results"
+        url: "https://platform.claude.com/docs/en/build-with-claude/search-results"
+      D:
+        text: "Citations"
+        url: "https://platform.claude.com/docs/en/build-with-claude/citations"
+
+  - id: d5_case_facts_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "5.1"
+    question: |
+      Your support agent has been working a billing-and-shipping case for 12 turns.
+      Early in the conversation the customer said, "If order 44192 does not arrive
+      before May 12, refund the $148 expedited shipping charge and cancel the
+      replacement." After two rounds of progressive summarization, the active prompt
+      now only says "customer wants compensation for delayed shipment," and the agent
+      proposes a $20 credit after the replacement ships. Which change most directly
+      preserves the critical details across the long interaction?
+    options:
+      A: "Use /compact more frequently so the conversation stays shorter."
+      B: "Extract order numbers, amounts, deadlines, and explicit customer expectations into a persistent structured case-facts block included with each turn outside the running summary."
+      C: "Raise max_tokens so the full transcript remains in context for more turns."
+      D: "Ask the customer to reconfirm the important details every time the agent calls a tool."
+    correct: B
+    explanation: |
+      B is correct because progressive summarization often blurs the exact values that
+      matter operationally, such as order IDs, dollar amounts, dates, and explicit
+      customer expectations. A persistent case-facts block keeps those transactional
+      facts precise even when the narrative history is summarized. A only compresses the
+      conversation and does not guarantee that critical details remain explicit. C may
+      delay context pressure, but it does not solve the root problem that the summary has
+      already become vague. D pushes a system design problem back onto the customer and
+      creates unnecessary friction in a case the agent should be able to track correctly.
+    docLink:
+      text: "Context windows"
+      url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+    optionLinks:
+      A:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      B:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      C:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      D:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+
+  - id: d5_escalation_criteria_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "5.2"
+    question: |
+      Your support agent escalates 37% of angry-sounding password-reset chats even
+      though it can usually solve them in one turn, but it sometimes handles calm-sounding
+      edge cases like competitor price matching without human review. Investigation shows
+      the system prompt says to escalate when the customer's sentiment is very negative
+      or when the model feels less than 70% confident. What is the best fix?
+    options:
+      A: "Raise the sentiment threshold so only the angriest messages escalate."
+      B: "Keep confidence-based escalation, but add a self-check asking the model to explain why it feels uncertain."
+      C: "Replace sentiment and self-confidence heuristics with explicit escalation criteria and few-shot examples covering human requests, policy gaps, and inability to make meaningful progress."
+      D: "Train a separate sentiment classifier and use its score instead of Claude's own judgment."
+    correct: C
+    explanation: |
+      C is correct because sentiment and self-reported confidence are unreliable proxies
+      for whether a case should be escalated. The prompt should anchor behavior to real
+      escalation triggers such as explicit human requests, policy ambiguity, and inability
+      to make meaningful progress, with examples showing the boundary. A still tunes the
+      wrong signal. B remains probabilistic because it still relies on the model's own
+      confidence estimate rather than explicit policy. D formalizes the same bad proxy:
+      angry tone does not reliably map to true ambiguity or escalation need.
+    docLink:
+      text: "Claude prompting best practices"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+    optionLinks:
+      A:
+        text: "Claude prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      B:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Claude prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      D:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+
+  - id: d5_resume_manifest_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "5.4"
+    question: |
+      Your internal codebase investigation assistant uses a coordinator plus three
+      subagents. After 90 minutes it has read 52 files, identified the refund flow, and
+      built a dependency map, but the process crashes before it writes the final
+      diagnosis. When you restart, `--resume` restores the chat transcript, yet key tool
+      outputs are stale and the subagents do not know which findings were already
+      validated. What design best supports reliable recovery?
+    options:
+      A: "Rely on `--resume` alone and tell the coordinator to reread whatever seems important."
+      B: "Run `/compact` every 10 minutes so the crash loses less conversational detail."
+      C: "Have each agent print free-form notes in chat responses and manually copy the relevant text into the next prompt."
+      D: "Require each agent to export structured state to a known location and have the coordinator load a manifest of those state files on resume before re-injecting the findings into fresh prompts."
+    correct: D
+    explanation: |
+      D is correct because reliable crash recovery depends on structured state persistence
+      outside the transient chat history. A manifest gives the coordinator a deterministic
+      way to reload what each agent already discovered and validated, even when old tool
+      results are stale. A assumes the transcript alone is trustworthy, which is risky
+      after code or environment changes. B reduces context pressure but does not create a
+      recoverable state snapshot. C creates an unstructured manual process that is brittle
+      and easy to misapply under time pressure.
+    docLink:
+      text: "Sessions"
+      url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+    optionLinks:
+      A:
+        text: "Sessions"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+      B:
+        text: "Context window"
+        url: "https://code.claude.com/docs/en/context-window"
+      C:
+        text: "Subagents"
+        url: "https://code.claude.com/docs/en/sub-agents"
+      D:
+        text: "Sessions"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+
+  - id: d5_methodology_context_01
+    scenario: "Multi-Agent Research System"
+    taskStatement: "5.6"
+    question: |
+      Your research pipeline is preparing an executive brief about database migration
+      performance. One source is a vendor benchmark showing 42% faster queries on a
+      synthetic workload, another is a customer case study showing 17% improvement in
+      production, and a third is an analyst note calling the gains "material" without a
+      percentage. The synthesis agent currently outputs "performance improves about 42%"
+      with three citations. What change best preserves provenance and uncertainty?
+    options:
+      A: "Prefer the highest numeric improvement because it is the most concrete claim."
+      B: "Average the available percentages and cite the non-numeric analyst note as supporting evidence."
+      C: "Preserve the original source characterizations and methodological context, and place performance claims in a contested or qualified section instead of collapsing them into one consensus number."
+      D: "Drop the analyst note and keep only the two numeric sources so the synthesis remains uniform."
+    correct: C
+    explanation: |
+      C is correct because these sources differ in methodology and evidentiary strength,
+      so collapsing them into one headline number destroys the context needed to interpret
+      them correctly. A cherry-picks the strongest claim without regard to workload or
+      environment. B invents a blended statistic that no source actually reported and
+      misuses a qualitative source as numeric support. D removes potentially useful context
+      instead of preserving uncertainty and letting readers see why the claims differ.
+    docLink:
+      text: "Citations"
+      url: "https://platform.claude.com/docs/en/build-with-claude/citations"
+    optionLinks:
+      A:
+        text: "Citations"
+        url: "https://platform.claude.com/docs/en/build-with-claude/citations"
+      B:
+        text: "Search results"
+        url: "https://platform.claude.com/docs/en/build-with-claude/search-results"
+      C:
+        text: "Citations"
+        url: "https://platform.claude.com/docs/en/build-with-claude/citations"
+      D:
+        text: "Search results"
+        url: "https://platform.claude.com/docs/en/build-with-claude/search-results"
+
+  - id: d5_content_rendering_01
+    scenario: "Multi-Agent Research System"
+    taskStatement: "5.6"
+    question: |
+      Your final market brief combines audited revenue by quarter, last-week product
+      launch news, and technical findings from engineering blogs. Reviewers say the
+      current output is hard to trust because the synthesis agent converts everything into
+      uniform prose paragraphs, hiding which data is tabular, which claims are
+      time-sensitive, and which findings are implementation details. What is the best
+      improvement?
+    options:
+      A: "Instruct the synthesis agent to render each content type in the format that matches it: financial figures as tables, recent news as dated prose, and technical findings as structured lists with preserved citations."
+      B: "Convert every source into the same JSON object structure and present the JSON directly to readers."
+      C: "Use a single long narrative paragraph so all evidence is interpreted in one consistent voice."
+      D: "Put every source into a table, including narrative news and technical caveats, so the report has one uniform layout."
+    correct: A
+    explanation: |
+      A is correct because preserving structure that matches the source type makes the
+      final synthesis easier to audit and less likely to hide uncertainty. Tables help
+      readers inspect financial figures, dated prose communicates time-sensitive news, and
+      structured lists suit technical findings with caveats. B may help internal machine
+      processing, but raw JSON is not the best human-facing synthesis format and still
+      flattens nuance. C further obscures distinctions that reviewers need to evaluate
+      trustworthiness. D forces all evidence into a format that fits some content poorly
+      and makes narrative caveats harder to read.
+    docLink:
+      text: "Prompt engineering overview"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+    optionLinks:
+      A:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      B:
+        text: "Citations"
+        url: "https://platform.claude.com/docs/en/build-with-claude/citations"
+      C:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      D:
+        text: "Search results"
+        url: "https://platform.claude.com/docs/en/build-with-claude/search-results"
+
+  - id: d5_full_history_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "5.1"
+    question: |
+      Your team built a custom Messages API loop for a support agent that handles order
+      lookups and returns. In 18% of follow-up turns, customers say things like "cancel
+      it instead" or "use the other order," and the agent either repeats the previous tool
+      call or asks what "it" refers to. Logs show the app sends only the newest user
+      message and latest tool result on each follow-up request to save tokens. What is the
+      best fix?
+    options:
+      A: "Increase max_tokens and move to a larger context window so the model can infer the missing earlier turns."
+      B: "Keep only a one-paragraph running summary in the system prompt and omit earlier assistant and tool blocks."
+      C: "Switch the workflow to the Message Batches API so each conversation is processed as an asynchronous batch."
+      D: "Append the full prior conversation state on each follow-up request, including assistant responses and any tool_result or compaction blocks, then compact deliberately only when needed."
+    correct: D
+    explanation: |
+      D is correct because the Messages API is stateless: coherent multi-turn behavior
+      depends on the client resending the prior conversation state, including assistant
+      content and any tool-related or compaction blocks that carry the active context
+      forward. A treats the symptom instead of the cause, because a larger context window
+      does nothing if the missing turns are never sent back to the API. B is too lossy for
+      references like "it" and can also discard structured blocks the model needs to
+      continue the workflow correctly. C addresses throughput and asynchronous processing,
+      not conversational coherence in a live multi-turn support session.
+    docLink:
+      text: "Tutorial: Build a tool-using agent"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/build-a-tool-using-agent"
+    optionLinks:
+      A:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      B:
+        text: "Compaction"
+        url: "https://platform.claude.com/docs/en/build-with-claude/compaction"
+      C:
+        text: "Batch processing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      D:
+        text: "Tutorial: Build a tool-using agent"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/build-a-tool-using-agent"

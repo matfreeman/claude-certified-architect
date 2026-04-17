@@ -357,4 +357,485 @@ questions:
         url: "https://code.claude.com/docs"
       D:
         text: "fork_session — when to use branching"
-        url: "https://code.claude.com/docs"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+
+  - id: d1_loop_02
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "1.1"
+    question: |
+      You are implementing an agentic loop for a customer support agent using the Claude
+      API. During testing, you notice the loop occasionally terminates prematurely — the
+      agent stops after its first tool call even when the customer's issue requires
+      multiple tool calls to resolve. Your loop termination check inspects whether the
+      assistant's response contains a text content block. What is wrong with this approach?
+    options:
+      A: "Text content blocks are not returned when tools are called, so the check never triggers."
+      B: "Claude may include both text content and tool_use blocks in the same response, so checking for text content is not a reliable termination signal — use stop_reason instead."
+      C: "The text content check only works for single-turn conversations and fails in multi-turn agentic loops."
+      D: "Text blocks are only returned in streaming mode and are omitted in non-streaming API responses."
+    correct: B
+    explanation: |
+      Claude can include both text content (e.g., reasoning or status updates to the user) and
+      tool_use blocks in the same response. Checking for the presence of text as a termination
+      signal is an anti-pattern because it may trigger even when tools still need execution. The
+      correct approach is to check stop_reason: continue when stop_reason is "tool_use" and
+      terminate when stop_reason is "end_turn". Option A is incorrect — Claude often includes
+      explanatory text alongside tool calls. Options C and D describe behaviors that don't exist.
+    docLink:
+      text: "How tool use works — the agentic loop"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works"
+    optionLinks:
+      A:
+        text: "Tool use response structure"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works"
+      B:
+        text: "stop_reason for agentic loop control"
+        url: "https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons"
+      C:
+        text: "Multi-turn tool use conversations"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works"
+      D:
+        text: "Streaming vs non-streaming responses"
+        url: "https://platform.claude.com/docs/en/build-with-claude/streaming"
+
+  - id: d1_tool_results_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "1.1"
+    question: |
+      Your customer support agent calls `lookup_order` successfully, but on the next loop
+      iteration Claude asks to call `lookup_order` again instead of deciding whether to
+      refund or escalate. Logs show your application sends a fresh request after each tool
+      execution containing only the original user message and the tool schema. What change
+      most directly fixes the loop behavior?
+    options:
+      A: "Keep tool outputs in application memory and send Claude a short natural-language summary only after all tool calls finish."
+      B: "Hard-code a rule that whenever `lookup_order` succeeds, the application should call `process_refund` next."
+      C: "Send the assistant's prior `tool_use` response and a new user message containing the `tool_result` blocks on the next request so Claude can reason over the fetched order data."
+      D: "Increase the maximum loop iteration limit from 3 to 10 so Claude has more chances to reach the refund step."
+    correct: C
+    explanation: |
+      C is correct because client-executed tool use requires a conversational loop: after a
+      `tool_use` response, your application must send back the assistant response plus a
+      user message containing the `tool_result` blocks so Claude can reason about the new
+      information. A is wrong because hidden application state is not part of Claude's
+      context, so the model still lacks the actual tool results it needs. B is wrong
+      because it replaces model-driven reasoning with a brittle decision tree that may skip
+      needed investigation or escalation steps. D is wrong because a higher iteration cap
+      treats the symptom; the loop is missing state, so extra turns do not solve the root
+      cause.
+    docLink:
+      text: "How tool use works — client-side agentic loop"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works"
+    optionLinks:
+      A:
+        text: "How tool results are returned to Claude"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works"
+      B:
+        text: "Tool use overview and model-driven tool selection"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      C:
+        text: "Formatting and returning `tool_result` blocks"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works"
+      D:
+        text: "Loop control in tool use workflows"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works"
+
+  - id: d1_subagent_spawn_01
+    scenario: "Multi-Agent Research System"
+    taskStatement: "1.3"
+    question: |
+      You define `researcher`, `analyst`, and `synthesizer` subagents in your Agent SDK
+      application and prompt the coordinator to fan out across web, PDF, and spreadsheet
+      sources. In production traces, the coordinator keeps doing all the work itself and no
+      `Agent` or legacy `Task` tool calls ever appear. Which configuration change most
+      directly enables subagent spawning?
+    options:
+      A: "Add `Agent` to each subagent's own tool list so the workers can register themselves with the coordinator."
+      B: "Include `Agent` in the coordinator's `allowed_tools`; without that tool, the coordinator cannot invoke subagents even if they are defined."
+      C: "Move the agent definitions into `CLAUDE.md` so the coordinator loads them before the system prompt."
+      D: "Set `tool_choice: \"any\"` so Claude is forced to spawn a subagent before it can answer."
+    correct: B
+    explanation: |
+      B is correct because the coordinator can only spawn subagents through the `Agent`
+      tool, and SDK traces may still show the older `Task` name in some compatibility
+      contexts. If `Agent` is missing from the coordinator's allowed tools, the definitions
+      exist but are unusable. A is wrong because subagents do not self-register and should
+      not be given subagent-spawning capability. C is wrong because subagent definitions are
+      configured through the SDK `agents` parameter or subagent files, not by placing them
+      in `CLAUDE.md`. D is wrong because `tool_choice` cannot force use of a tool the
+      coordinator does not actually have.
+    docLink:
+      text: "Subagents in the SDK"
+      url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+    optionLinks:
+      A:
+        text: "Subagent tool restrictions"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+      B:
+        text: "Agent tool requirement for subagent invocation"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+      C:
+        text: "How subagents are defined and inherited"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+      D:
+        text: "Tool choice configuration"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+
+  - id: d1_parallel_resolution_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "1.4"
+    question: |
+      After identity verification is complete, a customer asks about a duplicate charge, a
+      missing shipment, and loyalty points that disappeared after the order was edited.
+      Your current agent investigates those issues one after another, repeats customer
+      context in each pass, and has pushed median resolution time from 3.2 minutes to 5.0
+      minutes. Which redesign best fits this workflow?
+    options:
+      A: "Add few-shot examples showing ideal multi-issue support conversations so Claude learns the desired order."
+      B: "Send the entire raw transcript to a single general-purpose subagent and let it decide which issue matters most."
+      C: "Force the same tool sequence for every ticket: `get_customer`, `lookup_order`, `process_refund`, then `escalate_to_human`."
+      D: "Split the verified request into separate concern tracks, investigate each issue in parallel using the shared customer context, then synthesize one unified response."
+    correct: D
+    explanation: |
+      D is correct because multi-concern support requests should be decomposed into distinct
+      issues that can be investigated in parallel once prerequisite verification is done,
+      then merged into a single customer-facing resolution. A is wrong because prompt-only
+      guidance does not change the underlying sequential workflow or remove repeated work. B
+      is wrong because handing the entire transcript to one generalist agent preserves the
+      monolithic investigation pattern instead of structuring the work. C is wrong because a
+      fixed universal tool order is brittle and will execute irrelevant or unsafe steps for
+      many tickets.
+    docLink:
+      text: "Subagents in the SDK"
+      url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+    optionLinks:
+      A:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      B:
+        text: "Context isolation and subagent design"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+      C:
+        text: "Tool use overview and workflow control"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      D:
+        text: "Parallel subagent workflows"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+
+  - id: d1_policy_hook_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "1.5"
+    question: |
+      Compliance policy requires human approval for any refund above $500. An audit shows
+      three autonomous refunds above that threshold after the agent saw notes like "VIP
+      customer" and called `process_refund` directly. Which implementation gives the most
+      reliable enforcement with the least architectural sprawl?
+    options:
+      A: "Add a `PreToolUse` hook that inspects outgoing `process_refund` calls, denies amounts above $500, and redirects the agent toward the human escalation path."
+      B: "Add a stronger system prompt instructing Claude to escalate any refund above $500 instead of refunding it."
+      C: "Create a `verify_refund_policy` tool and rely on Claude to call it before every refund."
+      D: "Lower temperature and add more examples of high-value refund escalations."
+    correct: A
+    explanation: |
+      A is correct because a hook can deterministically intercept the outgoing tool call,
+      block policy-violating actions, and steer the workflow to the approved path before the
+      refund executes. B is wrong because prompt instructions are probabilistic and cannot
+      guarantee compliance for a hard business rule. C is wrong because adding another tool
+      still relies on the model to remember to call it before every refund. D is wrong
+      because tuning sampling and examples may improve behavior, but it still cannot enforce
+      a guaranteed approval gate.
+    docLink:
+      text: "Intercept and control agent behavior with hooks"
+      url: "https://code.claude.com/docs/en/agent-sdk/hooks"
+    optionLinks:
+      A:
+        text: "PreToolUse hooks and permission decisions"
+        url: "https://code.claude.com/docs/en/agent-sdk/hooks"
+      B:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Tool use overview"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      D:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+
+  - id: d1_review_chaining_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "1.6"
+    question: |
+      Your CI review agent analyzes a 14-file payment retry refactor in one monolithic
+      pass. It reliably catches local style issues, but it keeps missing regressions caused
+      by interactions between retry budgets, circuit breakers, and the shared error mapper.
+      Which decomposition strategy is the best fit for this kind of review?
+    options:
+      A: "Increase the available context window and ask Claude to review all 14 files at once with more detail."
+      B: "Use dynamic adaptive decomposition to map the whole repository first, then create a broad investigation plan before reviewing the changed files."
+      C: "Use prompt chaining: run local analysis on each changed file first, then perform a dedicated cross-file integration pass over the combined findings."
+      D: "Assign the full pull request to one specialized subagent so a single reviewer owns the entire analysis end to end."
+    correct: C
+    explanation: |
+      C is correct because a bounded code review is a predictable multi-step workflow: a
+      first pass can find file-local issues, and a second integration pass can reason about
+      cross-file behavior without attention dilution. A is wrong because a larger context
+      window does not fix the decomposition problem; it still asks one pass to do two
+      different review jobs at once. B is wrong because dynamic repo-wide planning is more
+      appropriate for open-ended investigations than for a specific pull request review. D
+      is wrong because a single subagent still collapses local and integration analysis into
+      one pass instead of structuring them separately.
+    docLink:
+      text: "Prompting best practices"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+    optionLinks:
+      A:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      B:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Prompt chaining in prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      D:
+        text: "Parallelization and subagent patterns"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+
+  - id: d1_refinement_loop_01
+    scenario: "Multi-Agent Research System"
+    taskStatement: "1.2"
+    question: |
+      Your coordinator produces an initial brief on "AI risks in hospital billing," but
+      product reviewers keep flagging the same gap: the final synthesis often notes that
+      denial-management evidence is thin and then stops anyway. Today 22% of published
+      briefs require manual follow-up research. Which orchestration change best improves
+      coverage without blindly rerunning the full pipeline every time?
+    options:
+      A: "Expand the synthesis prompt so it infers the missing denial-management section from adjacent evidence when the source set is thin."
+      B: "Have the coordinator evaluate synthesis output for explicit gaps, re-delegate targeted search and analysis tasks, then invoke synthesis again until coverage is sufficient."
+      C: "Run every request through search, document analysis, and synthesis twice, regardless of what the first pass found."
+      D: "Give the synthesis agent direct access to search tools so it can fill gaps on its own without going back through the coordinator."
+    correct: B
+    explanation: |
+      B is correct because the coordinator should own iterative refinement: inspect the
+      synthesized result for missing coverage, issue focused follow-up work, and then
+      re-synthesize. A is wrong because it asks the synthesis agent to speculate beyond the
+      evidence instead of closing the research gap. C is wrong because always rerunning the
+      full pipeline is expensive and ignores the value of targeted redelegation. D is wrong
+      because it bypasses the coordinator's routing, observability, and controlled
+      information flow.
+    docLink:
+      text: "Subagents in the SDK"
+      url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+    optionLinks:
+      A:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      B:
+        text: "Coordinator delegation and parallel subagent patterns"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+      C:
+        text: "Agent SDK overview"
+        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      D:
+        text: "Subagent isolation and invocation"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents"
+
+  - id: d1_handoff_summary_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "1.4"
+    question: |
+      Your support agent correctly verifies the customer, checks shipment events, and
+      determines that a lost parcel now requires a manual carrier claim. The escalation is
+      technically routed to a human, but the human queue receives only a generic "please
+      review" note and does not have transcript access. Average handle time on these cases
+      has increased 38%. What should the agent send at handoff?
+    options:
+      A: "The full raw conversation transcript plus every tool payload so the human can reconstruct the case from scratch."
+      B: "A brief note saying the model is uncertain and the human should review the order manually."
+      C: "A structured escalation summary with the verified customer ID, affected order, root cause, steps already completed, amount at risk, and the recommended next action."
+      D: "A polished apology message for the customer so the human can reuse the wording if needed."
+    correct: C
+    explanation: |
+      C is correct because a structured handoff preserves the operational facts a human
+      needs when they cannot inspect the full transcript. A is wrong because dumping the
+      entire transcript and raw tool data forces the human to re-investigate the case.
+      B is wrong because it communicates uncertainty without the actionable details needed
+      to continue the workflow. D is wrong because customer-facing language does not replace
+      the internal case summary required for an effective handoff.
+    docLink:
+      text: "Structured outputs in the SDK"
+      url: "https://code.claude.com/docs/en/agent-sdk/structured-outputs"
+    optionLinks:
+      A:
+        text: "Work with sessions"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+      B:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Structured outputs in the SDK"
+        url: "https://code.claude.com/docs/en/agent-sdk/structured-outputs"
+      D:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+
+  - id: d1_subagent_permission_hook_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "1.5"
+    question: |
+      Your repo-audit coordinator fans out to three read-only subagents. Each worker pauses
+      on the same `Read` and `Grep` permission prompts, stretching a 90-second audit into
+      seven minutes. You need deterministic behavior for those safe read-only tools without
+      granting blanket write or shell access. What change best fits the SDK?
+    options:
+      A: "Add a `PreToolUse` hook or narrowly scoped permission rule that auto-approves only `Read` and `Grep` for subagent sessions."
+      B: "Give all subagents unrestricted access to every built-in tool so prompts never appear."
+      C: "Add a stronger system prompt stating that `Read` and `Grep` are always approved."
+      D: "Lower temperature so the model is less likely to ask for permission."
+    correct: A
+    explanation: |
+      A is correct because hook-based interception or an equivalent narrow permission rule
+      provides deterministic approval for the specific safe tools involved, while keeping
+      broader capabilities constrained. B is wrong because it over-expands permissions far
+      beyond the problem you are solving. C is wrong because prompt text cannot enforce a
+      permission decision. D is wrong because sampling settings do not control the
+      permission model.
+    docLink:
+      text: "Intercept and control agent behavior with hooks"
+      url: "https://code.claude.com/docs/en/agent-sdk/hooks"
+    optionLinks:
+      A:
+        text: "Hooks in the SDK"
+        url: "https://code.claude.com/docs/en/agent-sdk/hooks"
+      B:
+        text: "Agent permissions"
+        url: "https://code.claude.com/docs/en/agent-sdk/permissions"
+      C:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      D:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+
+  - id: d1_fixed_pipeline_extraction_01
+    scenario: "Structured Data Extraction"
+    taskStatement: "1.6"
+    question: |
+      Your contract-ingestion workflow must always perform the same four checks in order:
+      identify the parties, capture renewal and termination dates, extract data-processing
+      clauses, and then run a final consistency review. The current agent attempts all four
+      tasks in one pass and misses one of the required sections in 11% of files. Which
+      decomposition strategy is the best fit?
+    options:
+      A: "Let one general-purpose extractor inspect each contract holistically so it can decide the most natural order for the four checks."
+      B: "Use dynamic adaptive decomposition that replans after each paragraph so later steps depend on whatever the model notices first."
+      C: "Fork the session into four branches and run one required check in each branch manually before comparing the outputs."
+      D: "Use prompt chaining with a fixed sequential pass for each known extraction requirement, then merge those pass results into the final record."
+    correct: D
+    explanation: |
+      D is correct because this is a predictable multi-step workflow with known stages, so a
+      fixed sequential pipeline reduces omissions and keeps the review criteria explicit. A
+      is wrong because a single holistic pass reintroduces the attention dilution that is
+      causing missed sections. B is wrong because adaptive replanning is more appropriate
+      for open-ended investigations than for a stable checklist. C is wrong because session
+      forking is for divergent explorations, not for implementing a repeatable extraction
+      pipeline.
+    docLink:
+      text: "Prompting best practices"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+    optionLinks:
+      A:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      B:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Work with sessions"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+      D:
+        text: "Prompt chaining in prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+
+  - id: d1_stale_session_summary_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "1.7"
+    question: |
+      Yesterday's investigation session analyzed a deployment repository on your laptop.
+      Overnight, an autoformat plus refactor touched 60 files, and today's follow-up work
+      must run on a fresh CI runner with no local session history. You still want the prior
+      reasoning, but many tool results are now stale. What is the best next step?
+    options:
+      A: "Copy the old session file to the CI runner and resume it so the full transcript is preserved."
+      B: "Start a fresh session and inject a structured summary of the prior findings plus the current objective."
+      C: "Fork the old session before moving to CI so the stale transcript is preserved in a clean branch."
+      D: "Resume the old session and ask the agent to trust earlier tool results for unchanged directories."
+    correct: B
+    explanation: |
+      B is correct because when prior tool results are stale and the work has moved to a new
+      host, a fresh session with a structured summary is more reliable than attempting to
+      reuse the old transcript wholesale. A is wrong because shipping session files across
+      hosts preserves stale tool outputs and adds operational fragility. C is wrong because
+      forking helps compare divergent approaches from a valid baseline, not salvage a stale
+      one. D is wrong because it still anchors the run to outdated results and assumes the
+      model can safely separate valid from invalid prior state on its own.
+    docLink:
+      text: "Work with sessions"
+      url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+    optionLinks:
+      A:
+        text: "Work with sessions"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+      B:
+        text: "Work with sessions"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+      C:
+        text: "Work with sessions"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+      D:
+        text: "Work with sessions"
+        url: "https://code.claude.com/docs/en/agent-sdk/sessions"
+
+  - id: d1_selective_routing_01
+    scenario: "Multi-Agent Research System"
+    taskStatement: "1.2"
+    question: |
+      Your coordinator currently sends every research request through search, document
+      analysis, and synthesis subagents. In production, 68% of requests are simple factual
+      lookups such as "When did vendor X launch model Y?" that are answered by the first
+      search hit, yet they still incur the full three-agent pipeline and push p95 latency
+      from 11 seconds to 29 seconds. Which orchestration change best addresses the root
+      cause?
+    options:
+      A: "Increase the coordinator's available context window so the synthesis subagent can process the full pipeline with fewer truncation risks."
+      B: "Invoke the search, analysis, and synthesis subagents in parallel for every request so the fixed pipeline finishes faster."
+      C: "Have the coordinator assess request complexity up front and invoke only the subagents needed for that case, reserving the full pipeline for broad multi-source research."
+      D: "Replace the specialized subagents with one general-purpose research subagent so every request follows a single delegation path."
+    correct: C
+    explanation: |
+      C is correct because the coordinator should decide which specialists are needed for a
+      given request instead of always routing through the full pipeline. This matches the
+      coordinator-subagent pattern: simple lookups can stop after the minimal necessary
+      step, while broad research can still invoke additional agents for analysis and
+      synthesis. A is wrong because a larger context window does not remove unnecessary
+      subagent hops or tool calls. B is wrong because parallelizing unneeded work still
+      wastes tokens and forces analysis/synthesis even when a single lookup is sufficient.
+      D is wrong because collapsing specialization into one catch-all agent weakens routing
+      by query complexity and increases prompt bloat.
+    docLink:
+      text: "Subagents in the SDK - Automatic invocation"
+      url: "https://code.claude.com/docs/en/agent-sdk/subagents#automatic-invocation"
+    optionLinks:
+      A:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      B:
+        text: "Subagents in the SDK - Parallelization"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents#parallelization"
+      C:
+        text: "Subagents in the SDK - Automatic invocation"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents#automatic-invocation"
+      D:
+        text: "Subagents in the SDK - Specialized instructions and knowledge"
+        url: "https://code.claude.com/docs/en/agent-sdk/subagents#specialized-instructions-and-knowledge"

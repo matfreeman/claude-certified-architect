@@ -302,3 +302,485 @@ questions:
       D:
         text: "Scoping review to changed lines only"
         url: "https://code.claude.com/docs/en/github-actions"
+
+  - id: d4_tooluse_enum
+    scenario: "Structured Data Extraction"
+    taskStatement: "4.3"
+    question: |
+      Your insurance claim extraction system uses a tool_use schema with a required enum
+      field for claim_type: ["auto", "home", "health", "life"]. In production, 6% of claims
+      are for niche categories (pet insurance, travel, umbrella policies). The model forces
+      these into the closest standard category, causing downstream routing errors. What is
+      the most effective schema change?
+    options:
+      A: "Add all known niche categories to the enum list to cover every possible claim type."
+      B: "Remove the enum constraint entirely and make claim_type a free-text string field."
+      C: "Add an 'other' value to the enum and include a companion claim_type_detail string field for the model to specify the actual category."
+      D: "Add a pre-processing step that classifies claims into the four categories before extraction."
+    correct: C
+    explanation: |
+      The "other" + detail string pattern is a documented best practice for extensible
+      categorization in extraction schemas. It preserves the benefits of enum validation for
+      common cases (auto, home, health, life) while gracefully handling edge cases without
+      forcing incorrect classifications. Adding all niche categories (A) is fragile and
+      requires constant maintenance as new types appear. Free-text strings (B) sacrifice all
+      validation benefits. A pre-processing classifier (D) adds complexity and still needs to
+      handle the same edge cases.
+    docLink:
+      text: "Structured output with tool use"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+    optionLinks:
+      A:
+        text: "Enum constraints in JSON schemas"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      B:
+        text: "Free-text vs constrained fields"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      C:
+        text: "Extensible enum patterns — 'other' + detail"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      D:
+        text: "Pre-processing classifiers for structured extraction"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+
+  - id: d4_fewshot_review_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "4.2"
+    question: |
+      Your GitHub Action posts review findings in a structured template with `location`,
+      `issue`, `severity`, and `suggested_fix`. Even with a detailed instruction block,
+      borderline cases still come back inconsistently: similar refactors sometimes get
+      flagged as missing test coverage, while other runs omit `suggested_fix` entirely.
+      What change is most likely to improve consistency?
+    options:
+      A: "Add 3-5 few-shot examples showing both real test coverage gaps and acceptable refactors, each using the exact output template you want."
+      B: "Replace the instructions with a shorter prompt that says to be conservative and return JSON only."
+      C: "Add a stricter enum for severity values but leave the prompt without examples."
+      D: "Increase the context window so the reviewer can inspect more surrounding files before formatting its findings."
+    correct: A
+    explanation: |
+      Few-shot examples are the most effective way to improve consistency when the failures
+      occur in ambiguous cases and in the desired output format itself. Showing both true
+      positives and acceptable patterns teaches the model how to generalize its judgment,
+      while also reinforcing the required structure for every finding. Option B repeats the
+      vague "be conservative" pattern that does not give the model concrete boundaries.
+      Option C constrains only one field and does not teach when to raise a finding or how
+      to populate the rest of the template. Option D increases available context, but the
+      root problem here is inconsistent judgment and formatting rather than missing tokens.
+    docLink:
+      text: "Use examples effectively"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+    optionLinks:
+      A:
+        text: "Few-shot examples for consistency and ambiguity"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+      B:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+      C:
+        text: "Structured outputs and schema constraints"
+        url: "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+      D:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+
+  - id: d4_fewshot_extraction_02
+    scenario: "Structured Data Extraction"
+    taskStatement: "4.2"
+    question: |
+      Your pipeline extracts clinical study details into `sample_size`,
+      `primary_endpoint`, `follow_up_period`, and `source_section`. You already provide
+      a detailed field-by-field instruction list and a JSON schema, but results are still
+      inconsistent across journals: studies with endpoint definitions in appendix tables
+      or footnotes often come back with null `source_section` or misassigned fields.
+      What improvement would most likely increase first-pass accuracy?
+    options:
+      A: "Add 2-4 few-shot examples spanning main-text methods sections, appendix tables, and footnote disclosures, with the exact output JSON for each."
+      B: "Expand the system prompt with an exhaustive list of section names used by major publishers."
+      C: "Mark every field as required so the model is forced to fill them on every paper."
+      D: "Run the same prompt twice and accept the value that appears in both responses."
+    correct: A
+    explanation: |
+      Few-shot examples work well for extraction tasks with varied document layouts because
+      they show Claude how to map different structures to the same target schema. Diverse
+      examples drawn from appendices, tables, and footnotes help the model generalize to
+      novel journal formats better than longer instructions alone. Option B is brittle and
+      will still miss unexpected layouts. Option C pressures the model to fabricate values
+      when information is absent or hard to locate. Option D increases cost and latency
+      without teaching the model how to handle the structural variation that is causing the
+      errors.
+    docLink:
+      text: "Use examples effectively"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+    optionLinks:
+      A:
+        text: "Few-shot examples for varied document structures"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+      B:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+      C:
+        text: "Structured outputs and required fields"
+        url: "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+      D:
+        text: "Chain complex prompts"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
+
+  - id: d4_retry_absent_source_01
+    scenario: "Structured Data Extraction"
+    taskStatement: "4.4"
+    question: |
+      Your contract extraction service returns `vendor_name`, `payment_terms`, and
+      `tax_id_reference`. The schema already allows `tax_id_reference` to be null. In 11%
+      of contracts, the body says "tax identification will be provided on the attached
+      W-9," and your validator currently retries the same PDF three times whenever that
+      field is null, appending "you missed tax_id_reference" on each retry. The retries
+      rarely recover and occasionally hallucinate IDs. What is the best fix?
+    options:
+      A: "Keep the retry loop but prepend a stronger instruction that nulls are unacceptable when an attachment is mentioned."
+      B: "Treat null as a valid outcome for this source document, and route the case to attachment retrieval or human follow-up instead of reprocessing the same PDF."
+      C: "Switch to a larger model so it can infer the likely tax ID from the vendor name and address."
+      D: "Add one more retry pass that asks Claude to reason step by step before answering."
+    correct: B
+    explanation: |
+      Retries help when the source contains the needed information and the model made a
+      correctable extraction mistake. They do not help when the required data is not
+      present in the provided document at all. Treating null as valid for this document and
+      retrieving the referenced attachment or routing for follow-up addresses the real
+      failure mode without encouraging hallucinations. Option A explicitly pushes the model
+      away from the correct null outcome. Option C asks the model to infer a value that is
+      not in the source. Option D adds more cost to the same ineffective retry pattern.
+    docLink:
+      text: "Chain complex prompts"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
+    optionLinks:
+      A:
+        text: "Self-correction and chained prompts"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
+      B:
+        text: "Structured outputs and valid null handling"
+        url: "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+      C:
+        text: "Use examples effectively"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+      D:
+        text: "Self-correction and chained prompts"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
+
+  - id: d4_feedback_patterns_02
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "4.4"
+    question: |
+      Your CI reviewer emits structured findings with `file`, `line`, `severity`, and
+      `message`. After a month, 41% of findings are dismissed by engineers, but you still
+      cannot tell whether false positives come mostly from stale-comment checks, naming
+      suggestions, or test-gap detection. You want a feedback loop that will let you
+      improve prompts systematically. What change is most effective?
+    options:
+      A: "Add a `detected_pattern` field to every finding so dismissals can be grouped by the heuristic that triggered them."
+      B: "Add a second self-correction pass before posting comments, but keep the same finding schema."
+      C: "Lower the posting threshold so only critical findings are emitted."
+      D: "Increase the context window so the reviewer sees more surrounding code before each comment."
+    correct: A
+    explanation: |
+      Adding a `detected_pattern` field gives you the structured signal needed to analyze
+      dismissal rates by finding type and refine the worst-performing heuristics. That is
+      the core feedback-loop design improvement this scenario needs. Option B may reduce
+      some noise, but it does not make the dismissal data diagnosable. Option C hides the
+      symptom by suppressing output rather than identifying which pattern is failing.
+      Option D may help certain cases, but it still does not tell you which detection logic
+      is responsible for the false positives.
+    docLink:
+      text: "Structured outputs"
+      url: "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+    optionLinks:
+      A:
+        text: "Structured outputs for analyzable finding schemas"
+        url: "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+      B:
+        text: "Chain complex prompts"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
+      C:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+      D:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+
+  - id: d4_independent_review_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "4.6"
+    question: |
+      Your CI workflow uses one Claude run to generate a large refactor patch and then
+      asks that same run to perform the security review before posting merge-blocking
+      comments. In postmortems, the review catches obvious syntax issues but repeatedly
+      misses subtle authorization regressions that human reviewers later find. Logs show
+      the review step often reuses assumptions made during generation. What change most
+      directly improves review reliability?
+    options:
+      A: "Add stronger instructions telling the same session to be skeptical of its own code before reviewing."
+      B: "Run the review in a second independent Claude session or teammate that receives only the diff and the review checklist."
+      C: "Increase the context window and thinking budget before running the review in the same session."
+      D: "Split the same-session review into per-file and integration passes."
+    correct: B
+    explanation: |
+      Independent review works better here because the second Claude instance does not
+      inherit the generator's reasoning context. That makes it more willing to question
+      design assumptions and catch issues the original session may rationalize away. Option
+      A still relies on the same context that produced the code. Option C adds more
+      compute, but it does not remove the anchoring effect from the generation step. Option
+      D can improve attention across many files, yet it still leaves the same reviewer
+      evaluating its own prior reasoning rather than providing an independent check.
+    docLink:
+      text: "Agent teams"
+      url: "https://code.claude.com/docs/en/agent-teams"
+    optionLinks:
+      A:
+        text: "Use examples effectively"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#use-examples-effectively"
+      B:
+        text: "Independent Claude Code sessions with agent teams"
+        url: "https://code.claude.com/docs/en/agent-teams"
+      C:
+        text: "Context windows"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      D:
+        text: "Chain complex prompts"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
+
+  - id: d4_noisy_category_disable_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "4.1"
+    question: |
+      Your automated PR reviewer comments on SQL injection risks, authorization bypasses,
+      and stale comments across 220 pull requests each week. Security findings are
+      dismissed only 8% of the time, but stale-comment warnings are dismissed 66% of the
+      time, and developers have started ignoring the whole bot. While you refine the weak
+      prompt, what is the best immediate step to restore trust?
+    options:
+      A: "Add a stronger instruction telling the reviewer to report findings only when it is highly confident."
+      B: "Temporarily disable stale-comment findings, keep the higher-precision security categories live, and iterate on the noisy category separately."
+      C: "Move all findings into a single end-of-PR summary so developers see fewer inline comments."
+      D: "Switch the workflow to a larger model so all categories improve at the same time."
+    correct: B
+    explanation: |
+      Temporarily disabling the high-false-positive category is the proportionate fix because
+      noisy findings are eroding trust in categories that are already performing well.
+      Option A repeats the vague "high confidence" instruction pattern, which does not give
+      the model clearer decision boundaries. Option C changes presentation but leaves the bad
+      stale-comment judgments intact. Option D is expensive and still avoids the actual
+      prompt-design problem causing the false positives.
+    docLink:
+      text: "Prompt engineering overview"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+    optionLinks:
+      A:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      B:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      D:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+
+  - id: d4_severity_rubric_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "4.1"
+    question: |
+      Your merge-blocking reviewer outputs `severity` as `critical`, `high`, `medium`, or
+      `low`. The same missing authorization check is labeled `critical` in one service and
+      `medium` in another, while harmless refactors occasionally get marked `high`,
+      creating pager noise and inconsistent merge decisions. What prompt change is most
+      likely to make severity classification consistent?
+    options:
+      A: "Ask Claude to explain each severity label in one sentence so reviewers can understand its reasoning."
+      B: "Set severity based on the size of the pull request, with larger diffs automatically treated as higher risk."
+      C: "Define explicit severity criteria with concrete code examples for each level, including examples of findings that should not be escalated."
+      D: "Collect a month of human relabeling data and plan a fine-tune instead of changing the prompt."
+    correct: C
+    explanation: |
+      Explicit severity criteria with concrete examples give the model stable decision
+      boundaries, which is exactly what this inconsistent classification problem needs.
+      Option A improves auditability but leaves the ambiguous rubric unchanged. Option B uses
+      diff size as a proxy for business impact, which is not a reliable severity signal.
+      Option D may be useful later, but it delays the prompt-level fix and over-engineers
+      the response to a problem that should first be addressed with clearer criteria.
+    docLink:
+      text: "Prompt engineering overview"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+    optionLinks:
+      A:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      B:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      D:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+
+  - id: d4_tool_choice_any_01
+    scenario: "Structured Data Extraction"
+    taskStatement: "4.3"
+    question: |
+      Your intake service receives a mix of invoices, receipts, and purchase orders from
+      email attachments. You expose three extraction tools with different JSON schemas, but
+      the workflow currently uses `tool_choice: "auto"`. In 7% of requests, Claude returns
+      a prose summary instead of calling any tool, which breaks the downstream parser.
+      What is the best fix?
+    options:
+      A: "Set `tool_choice: \"any\"` so Claude must call one of the available extraction tools while still choosing the right schema for the document."
+      B: "Force the invoice extraction tool on every request and remap fields afterward if the document turns out to be a receipt or purchase order."
+      C: "Keep `tool_choice: \"auto\"` and add a stronger prompt that says to respond with valid JSON only."
+      D: "Post-process prose responses with regex and coerce them into the nearest schema after the fact."
+    correct: A
+    explanation: |
+      `tool_choice: "any"` is the right control when you need guaranteed structured output
+      but still want Claude to choose among multiple tools. Option B is wrong because the
+      document type is unknown and forcing the wrong schema will create semantic errors.
+      Option C remains probabilistic because prompt instructions do not guarantee a tool
+      call. Option D treats the symptom after the parser is already broken and is far less
+      reliable than enforcing tool use directly.
+    docLink:
+      text: "Tool use with Claude"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+    optionLinks:
+      A:
+        text: "Tool use with Claude"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      B:
+        text: "Tool use with Claude"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      C:
+        text: "Structured outputs"
+        url: "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+      D:
+        text: "Structured outputs"
+        url: "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+
+  - id: d4_tool_choice_forced_01
+    scenario: "Structured Data Extraction"
+    taskStatement: "4.3"
+    question: |
+      Your accounts-payable pipeline always processes invoices, not mixed document types.
+      The first turn must extract `invoice_number`, `vendor_name`, and `due_date` into a
+      JSON payload before a second step enriches the vendor record in your ERP. You expose
+      both `extract_invoice_metadata` and `enrich_vendor_record` as tools in the same
+      request, and in 9% of runs Claude calls the enrichment tool first using guessed
+      vendor names from the document text. What change most reliably enforces the required
+      first step?
+    options:
+      A: "Set `tool_choice: \"any\"` so Claude must call one of the available tools before responding."
+      B: "Set `tool_choice: {\"type\": \"tool\", \"name\": \"extract_invoice_metadata\"}` for the extraction turn, then run enrichment only after you receive the structured fields."
+      C: "Keep `tool_choice: \"auto\"` and strengthen the prompt with 'always extract metadata before any enrichment.'"
+      D: "Set `strict: true` on both tools while keeping `tool_choice: \"auto\"` so schema validation forces Claude to start with extraction."
+    correct: B
+    explanation: |
+      For a workflow where a specific extraction step must happen before later enrichment,
+      forcing the named tool is the deterministic control Anthropic documents for
+      `tool_choice`. It guarantees Claude starts with `extract_invoice_metadata`, after
+      which your application can execute the enrichment step using the validated fields.
+      Option A only guarantees that some tool is called, so Claude could still choose
+      `enrich_vendor_record` first. Option C is a prompt-only instruction and therefore
+      probabilistic rather than enforced. Option D confuses strict schema validation with
+      tool selection: `strict: true` constrains the inputs of a chosen tool, but it does
+      not make Claude choose the extraction tool first.
+    docLink:
+      text: "Define tools: forcing tool use"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+    optionLinks:
+      A:
+        text: "Define tools: `tool_choice: \"any\"`"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+      B:
+        text: "Define tools: forcing a specific tool"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+      C:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      D:
+        text: "Define tools: strict tool use"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+
+  - id: d4_batch_resubmit_failed_01
+    scenario: "Structured Data Extraction"
+    taskStatement: "4.5"
+    question: |
+      Your nightly batch job processes 18,000 contracts for metadata extraction. This
+      morning, 96 requests failed because OCR appended long exhibit text that pushed those
+      documents over context limits; the rest completed successfully. Every request already
+      includes a `custom_id`. What is the most efficient recovery strategy?
+    options:
+      A: "Rerun the full batch so successful and failed documents are processed under identical conditions."
+      B: "Move the entire workload to the synchronous Messages API because batch processing cannot handle partial failures cleanly."
+      C: "Resubmit the same 96 documents unchanged and rely on the batch service to succeed on a later attempt."
+      D: "Use `custom_id` to identify only the failed documents, chunk or trim those oversized inputs, and resubmit just that subset."
+    correct: D
+    explanation: |
+      `custom_id` exists so you can correlate individual batch requests and handle failures
+      surgically. Resubmitting only the failed documents after modifying the oversized inputs
+      minimizes cost and focuses the retry on the real problem. Option A wastes money and
+      time rerunning successful work. Option B is incorrect because batch processing does let
+      you inspect and retry individual failures. Option C repeats the same oversized inputs,
+      so the context-limit failures are likely to recur.
+    docLink:
+      text: "Batch processing"
+      url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+    optionLinks:
+      A:
+        text: "Batch processing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      B:
+        text: "Batch processing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      C:
+        text: "Batch processing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+      D:
+        text: "Batch processing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+
+  - id: d4_verification_confidence_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "4.6"
+    question: |
+      Your CI review system already uses one independent Claude run to inspect each pull
+      request. It now emits about 40 findings per day, but human reviewers have time to
+      manually validate only 10, and you cannot afford to miss subtle security issues while
+      trimming low-value style disputes. Which architecture best supports calibrated routing?
+    options:
+      A: "Ask the same reviewer pass to report only findings it rates 10/10 confidence, and suppress everything else."
+      B: "Replace the reviewer with a larger model and trust its first-pass output without a secondary check."
+      C: "Add a second verification pass that reevaluates each finding independently, emits a confidence field, and routes low-confidence or high-impact findings to humans."
+      D: "Run three copies of the first-pass reviewer and keep only findings that all three runs agree on."
+    correct: C
+    explanation: |
+      A separate verification pass with a confidence field is the best design here because
+      it creates a structured signal for routing scarce human review capacity without relying
+      on the original reviewer to judge its own output. Option A uses a vague same-pass
+      threshold and risks suppressing subtle but important findings. Option B may improve raw
+      quality somewhat, but it does not create a calibrated triage mechanism. Option D
+      increases cost and can suppress real issues that appear only in one strong review pass.
+    docLink:
+      text: "Create custom subagents"
+      url: "https://code.claude.com/docs/en/sub-agents"
+    optionLinks:
+      A:
+        text: "Prompting best practices"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+      B:
+        text: "Prompt engineering overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+      C:
+        text: "Create custom subagents"
+        url: "https://code.claude.com/docs/en/sub-agents"
+      D:
+        text: "Create custom subagents"
+        url: "https://code.claude.com/docs/en/sub-agents"

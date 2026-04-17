@@ -251,3 +251,290 @@ questions:
       D:
         text: "Exception propagation in agent architectures"
         url: "https://code.claude.com/docs/en/agent-sdk/overview"
+
+  - id: d2_mcp_resources
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "2.4"
+    question: |
+      Your developer productivity agent uses an MCP server connected to your issue
+      tracker. Engineers frequently ask "what issues are assigned to me?" which triggers
+      the agent to make 3-4 exploratory tool calls (list projects, list sprints, filter
+      by assignee) before returning results. This adds 8-12 seconds of latency to every
+      request. The issue tracker's data structure rarely changes. What is the most
+      effective architectural improvement?
+    options:
+      A: "Cache the results of exploratory tool calls in the agent's conversation context so subsequent requests skip the exploration."
+      B: "Expose a content catalog as an MCP resource (e.g., current sprint issues, user assignments) so the agent has visibility into available data without requiring exploratory tool calls."
+      C: "Create a single consolidated tool that combines all three queries into one API call."
+      D: "Add detailed instructions to the system prompt explaining the optimal query sequence to reduce unnecessary exploratory calls."
+    correct: B
+    explanation: |
+      MCP resources are specifically designed to expose content catalogs (issue summaries,
+      documentation hierarchies, database schemas) to give agents visibility into available data
+      without requiring exploratory tool calls. By exposing current sprint issues and user
+      assignments as resources, the agent can directly access the data structure without the
+      discovery overhead. Conversation caching (A) only helps within a single session and goes
+      stale. A consolidated tool (C) reduces calls but doesn't eliminate the need for the agent
+      to discover what's available. System prompt instructions (D) are probabilistic and don't
+      address the fundamental need for the agent to discover the data structure.
+    docLink:
+      text: "MCP resources and content catalogs"
+      url: "https://code.claude.com/docs/en/mcp"
+    optionLinks:
+      A:
+        text: "Conversation context caching"
+        url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+      B:
+        text: "MCP resources — exposing content catalogs"
+        url: "https://code.claude.com/docs/en/mcp"
+      C:
+        text: "Tool consolidation patterns"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+      D:
+        text: "System prompt guidance for tool sequencing"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+
+  - id: d2_prompt_boundary_01
+    scenario: "Multi-Agent Research System"
+    taskStatement: "2.1"
+    question: |
+      Your research system has two tools: `extract_web_results` for live URLs and
+      `analyze_pdf_brief` for uploaded PDFs. After a prompt update, 22% of requests
+      that include a news URL now call `analyze_pdf_brief` first, even though both
+      tool descriptions already explain their boundaries in 4 sentences. Review shows
+      the system prompt says "Always analyze documents thoroughly before answering"
+      and repeatedly refers to web pages as documents. What is the best first fix?
+    options:
+      A: "Add 6-8 `input_examples` to both tools showing valid argument objects for typical requests."
+      B: "Force `extract_web_results` whenever the user message contains `http` or `www`."
+      C: "Rewrite the system prompt to remove keyword-sensitive wording that blurs the boundary between the two tools while keeping the detailed descriptions."
+      D: "Rename `analyze_pdf_brief` to `review_pdf_brief` and leave the prompt unchanged."
+    correct: C
+    explanation: |
+      Claude's tool-use prompt is constructed from the tool definitions plus your
+      user-specified system prompt, so keyword-sensitive prompt wording can override
+      otherwise solid tool boundaries. Option C addresses the root cause: the prompt
+      language is teaching the model to associate web pages with the PDF tool.
+      Option A can help with argument formatting for complex tools, but it does not
+      fix the incorrect selection cue. Option B is brittle because some URLs point
+      to PDFs or other content that may legitimately need a different tool. Option D
+      may reduce a little overlap, but it leaves the misleading prompt instruction
+      intact.
+    docLink:
+      text: "Define tools"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+    optionLinks:
+      A:
+        text: "Providing tool use examples"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+      B:
+        text: "Controlling when Claude calls tools"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+      C:
+        text: "Tool-use system prompt and tool definitions"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+      D:
+        text: "Best practices for tool definitions"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+
+  - id: d2_namespacing_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "2.1"
+    question: |
+      Your internal `release_ops` MCP server exposes GitHub, Jira, and Slack actions
+      through tools named `search`, `list_open`, and `post_update`. In the last 50
+      release-status investigations, Claude sent 9 calls to the wrong backend even
+      though each description mentions the service name. Which redesign most directly
+      improves tool selection reliability without adding an external router?
+    options:
+      A: "Rename the tools with explicit service namespaces and update descriptions, for example `github_list_pull_requests`, `jira_search_issues`, and `slack_post_release_update`."
+      B: "Keep the tool names and add a longer system prompt describing your release workflow."
+      C: "Dynamically disconnect all but one backend before each turn so Claude can only see one service at a time."
+      D: "Add `input_examples` to every tool, even though the primary failure is choosing the wrong service rather than formatting arguments."
+    correct: A
+    explanation: |
+      Meaningful namespacing makes tool selection more unambiguous as a tool library
+      grows, especially when several tools span different services and do related
+      work. Option A directly clarifies purpose at the interface level. Option B adds
+      more prompt text but still leaves the ambiguous tool names in place. Option C
+      is operationally expensive and prevents natural cross-system work in a single
+      turn. Option D is useful for complex input shapes, but it does not solve the
+      service-selection ambiguity that is driving the misroutes.
+    docLink:
+      text: "Define tools"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+    optionLinks:
+      A:
+        text: "Use meaningful namespacing in tool names"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+      B:
+        text: "Tool-use system prompt"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+      C:
+        text: "Connect Claude Code to tools via MCP"
+        url: "https://code.claude.com/docs/en/mcp"
+      D:
+        text: "Providing tool use examples"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+
+  - id: d2_mcp_local_scope_01
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "2.4"
+    question: |
+      You are trialing a local MCP server that connects to your personal staging
+      database while debugging a code-generation issue in one repository. The server
+      must load only in this project, must not be checked into version control, and
+      should not appear automatically in your other repositories. Which configuration
+      approach is correct?
+    options:
+      A: "Install it with local scope so it is stored in `~/.claude.json` for the current project only."
+      B: "Add it to project-scoped `.mcp.json` so the configuration lives with the repository."
+      C: "Add it as a user-scoped server in `~/.claude.json` so it is available across all projects."
+      D: "Document the server in `CLAUDE.md` and tell Claude to treat that as the active MCP configuration."
+    correct: A
+    explanation: |
+      Local scope is the right fit for a project-specific server that should stay
+      private to you and out of version control. Claude Code stores local-scoped MCP
+      servers in `~/.claude.json` under the current project's path. Project scope (B)
+      is for shared team tooling and writes to `.mcp.json`. User scope (C) would make
+      the server available across all repositories on your machine. `CLAUDE.md` (D)
+      can document workflow guidance, but it does not configure MCP servers.
+    docLink:
+      text: "Connect Claude Code to tools via MCP"
+      url: "https://code.claude.com/docs/en/mcp"
+    optionLinks:
+      A:
+        text: "Local MCP scope"
+        url: "https://code.claude.com/docs/en/mcp"
+      B:
+        text: "Project MCP scope"
+        url: "https://code.claude.com/docs/en/mcp"
+      C:
+        text: "User MCP scope"
+        url: "https://code.claude.com/docs/en/mcp"
+      D:
+        text: "Claude Code memory files"
+        url: "https://code.claude.com/docs/en/memory"
+
+  - id: d2_glob_files_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "2.5"
+    question: |
+      You are preparing a risky refactor in a monorepo with 240 packages. Before
+      touching the checkout UI, you want every React test file under
+      `packages/checkout` that matches `*.test.tsx` so Claude can inspect only the
+      relevant paths first. Which built-in tool is the right starting point?
+    options:
+      A: "Use Grep to search file contents for `.test.tsx` and treat the results as the file list."
+      B: "Use Glob with `packages/checkout/**/*.test.tsx`, then Read the matched files you actually need."
+      C: "Read `packages/checkout/index.ts` and follow imports until you discover the tests manually."
+      D: "Use Bash `find` because Claude Code has no built-in file-pattern matching."
+    correct: B
+    explanation: |
+      Glob is the built-in tool for file path pattern matching, which makes it the
+      correct first step when you need files by name or extension pattern. Option B
+      also uses Read only after narrowing the path set, which keeps exploration
+      efficient. Option A is wrong because Grep searches file contents, not paths.
+      Option C is far slower and can miss tests that are not reachable from that
+      import path. Option D is unnecessary because Claude Code already provides a
+      dedicated file-pattern tool.
+    docLink:
+      text: "Tools reference"
+      url: "https://code.claude.com/docs/en/tools-reference"
+    optionLinks:
+      A:
+        text: "Grep searches file contents"
+        url: "https://code.claude.com/docs/en/tools-reference"
+      B:
+        text: "Glob finds files based on pattern matching"
+        url: "https://code.claude.com/docs/en/tools-reference"
+      C:
+        text: "Read reads file contents"
+        url: "https://code.claude.com/docs/en/tools-reference"
+      D:
+        text: "Bash executes shell commands"
+        url: "https://code.claude.com/docs/en/tools-reference"
+
+  - id: d2_edit_fallback_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "2.5"
+    question: |
+      While refactoring a generated API client, the line `raise ApiError(response)`
+      appears 8 times in the same file. `Edit` keeps failing because the target text
+      is not unique, but you only need to change the occurrence inside
+      `create_invoice()`. What is the most reliable next step?
+    options:
+      A: "Retry `Edit` with a shorter match string so it can replace any similar occurrence."
+      B: "Use Grep on every turn to search for `raise ApiError(response)` until Claude picks the right match."
+      C: "Use Glob to narrow the file list further, then retry the same `Edit` operation."
+      D: "Use Read to load the file, update the intended occurrence with its surrounding context, then Write the full revised file back."
+    correct: D
+    explanation: |
+      When a targeted edit cannot identify a unique match, the reliable fallback is
+      to read the full file, make the intended change in context, and write the
+      updated file back. That avoids ambiguous partial replacements. Option A makes
+      the ambiguity worse by broadening the match. Option B helps find occurrences
+      but still does not produce a reliable single edit. Option C only narrows files,
+      not duplicate text within the same file, so it does not solve the underlying
+      problem.
+    docLink:
+      text: "Text editor tool"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/text-editor-tool"
+    optionLinks:
+      A:
+        text: "Exact-match string replacement"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/text-editor-tool"
+      B:
+        text: "Grep searches file contents"
+        url: "https://code.claude.com/docs/en/tools-reference"
+      C:
+        text: "Glob finds files based on pattern matching"
+        url: "https://code.claude.com/docs/en/tools-reference"
+      D:
+        text: "Read and Write file operations"
+        url: "https://code.claude.com/docs/en/tools-reference"
+
+  - id: d2_validation_retry_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "2.2"
+    question: |
+      Your support agent uses an MCP tool named `schedule_callback` to book customer
+      callbacks. In 14% of cases, Claude sends values like "Friday afternoon" or a
+      timestamp outside staffed hours; the tool's server-side checks reject them
+      because the callback must be a future ISO-8601 time during business hours.
+      The tool currently returns a JSON-RPC `-32602 Invalid params` error, and logs
+      show the agent repeats the same bad call pattern before giving up. What
+      change best improves autonomous recovery?
+    options:
+      A: "Keep returning JSON-RPC protocol errors for invalid callback times, because argument validation failures should stay outside the model's context."
+      B: "Silently coerce invalid callback times to the next available slot and return success so the conversation can continue."
+      C: "Return a tool result with `isError: true` and a specific validation message describing the time constraint so Claude can correct the arguments and retry."
+      D: "Return `isError: false` with an empty result and let the coordinator infer that another tool call is needed."
+    correct: C
+    explanation: |
+      Input validation errors should be returned as tool execution errors with
+      `isError: true` and actionable feedback, because that gives the model the
+      information it needs to self-correct and retry with adjusted parameters.
+      Option A is wrong because protocol errors are for malformed requests, unknown
+      tools, and similar request-level problems; they are less useful for model
+      recovery on semantic validation failures. Option B is wrong because silent
+      coercion hides the constraint violation and can book a time the customer did
+      not request. Option D is wrong because a false-success payload makes the
+      validation failure indistinguishable from a legitimate empty result, which
+      undermines reliable retry behavior.
+    docLink:
+      text: "SEP-1303: Input Validation Errors as Tool Execution Errors"
+      url: "https://modelcontextprotocol.io/seps/1303-input-validation-errors-as-tool-execution-errors"
+    optionLinks:
+      A:
+        text: "MCP tools spec — protocol errors vs tool execution errors"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
+      B:
+        text: "MCP tools spec — tool execution errors should carry actionable feedback"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
+      C:
+        text: "SEP-1303 — validation errors should be visible to the model"
+        url: "https://modelcontextprotocol.io/seps/1303-input-validation-errors-as-tool-execution-errors"
+      D:
+        text: "MCP tools spec — use `isError` to distinguish failures from normal results"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
