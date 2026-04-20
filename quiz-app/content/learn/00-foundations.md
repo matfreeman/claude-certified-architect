@@ -2,126 +2,158 @@
 taskStatement: "0.0"
 domain: 0
 title: "Cross-Domain Foundations"
-minutes: 12
-concepts: [stop_reason, system prompt, context window, message roles, tool_choice, max_tokens]
+minutes: 15
+concepts: [Messages API, stop_reason, system prompt, tool_choice, context window]
 docLinks:
-  - text: "Claude API docs"
-    url: "https://platform.claude.com/docs/en/"
+  - text: "Messages API overview"
+    url: "https://platform.claude.com/docs/en/api/messages"
+  - text: "Tool use guide"
+    url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
 ---
 
-## How to read this exam
+## What is this section?
 
-The exam tests **architectural judgment**, not feature recall. For every question, ask yourself four things:
+Before diving into any specific domain, you need a working mental model of how Claude works at the API layer. Every domain — agentic loops, tool design, Claude Code config, prompt engineering, context management — builds on these fundamentals.
 
-> **1. What layer is the problem at?**
-> Prompt problem · Tool-definition problem · Workflow/orchestration problem · Deterministic enforcement problem
->
-> **2. What scope is the question asking for?**
-> First fix · Ultimate system design · Root cause · Immediate symptom
->
-> **3. Is the best answer lighter than the distractors?**
-> Correct answers are almost always the *lightest* effective fix. Distractors are plausible but too heavy, too vague, or at the wrong layer.
->
-> **4. Does the situation require a guarantee or a suggestion?**
-> Financial consequences, security, compliance → hooks/programmatic enforcement (deterministic).
-> Style, preferences, soft guidelines → prompt instructions (probabilistic).
-
-Memorise these four questions. Every domain tests them.
+Read this lesson first. Then read the official docs linked above. Then come back and work through the domains in order.
 
 ---
 
-## 9 concepts to master before anything else
+## The Claude Platform: Three Layers
 
-If these are shaky, you are not ready — even if you are productive in Claude Code day to day.
+Understanding Claude as a platform means understanding three distinct layers. The exam tests all three, and distractors often put the right answer at the wrong layer.
 
-| Concept | One-line definition |
-|---|---|
-| `stop_reason` | The signal that tells your loop what to do next. `"tool_use"` = execute tools. `"end_turn"` = done. |
-| `tool_choice` | Controls whether Claude *may* call a tool (`auto`), *must* call one (`any`), or *must* call a specific one. |
-| Hooks vs prompts | Hooks = deterministic guarantees. Prompts = probabilistic compliance (~85–95%). Use hooks when you need certainty. |
-| Subagent context isolation | A subagent sees only what you explicitly put in its prompt. It does NOT inherit the coordinator's history. |
-| MCP `isError` flag | How MCP tools signal failures. Transient errors are retryable. Business/validation errors are not. |
-| MCP tools vs resources | Tools = callable functions. Resources = content catalogs exposed upfront. |
-| CLAUDE.md vs rules vs skills | CLAUDE.md = always-loaded instructions. Rules = conditional by path. Skills = invocable workflows with frontmatter. |
-| Batch vs synchronous | Batch API = async, 50% cheaper, 24h SLA, no multi-turn. Synchronous = real-time, supports conversation. |
-| Escalation & provenance | Know when to escalate (explicit request, policy gap, ambiguity). Know how to attribute claims to sources. |
+```
+┌─────────────────────────────────────────┐
+│           Your Application              │
+│   (orchestration, state, UI logic)      │
+├─────────────────────────────────────────┤
+│           Agent SDK / Claude Code       │
+│   (manages loops, tools, sessions)      │
+├─────────────────────────────────────────┤
+│           Messages API                  │
+│   (stateless: one request → one reply)  │
+└─────────────────────────────────────────┘
+```
+
+- **Messages API** — the raw HTTP layer. Stateless: Claude remembers nothing between calls. You send the full conversation history every time.
+- **Agent SDK / Claude Code** — sits on top of the API and manages the tool-call loop, sessions, hooks, and subagents for you.
+- **Your application** — orchestrates everything: decides when to call Claude, what context to include, how to handle results.
+
+Most exam questions hinge on which layer a problem belongs to, and which layer is the lightest place to fix it.
 
 ---
 
-## Cross-Domain Foundations
+## The Messages API
 
-These concepts appear across all 5 domains. Read this before any domain lesson.
-
-### API request structure and message history
-
-At the Messages API layer, the model does not persist state between requests. Your application must resend the relevant conversation history on every call.
+A single Messages API request looks like this:
 
 ```json
 {
   "model": "claude-sonnet-4-6",
   "max_tokens": 1024,
-  "system": "You are a careful assistant.",
+  "system": "You are a helpful assistant.",
   "messages": [
-    {"role": "user", "content": "Find the bug"},
-    {"role": "assistant", "content": "I'll inspect the codebase."}
+    { "role": "user",      "content": "Find the bug in auth.py" },
+    { "role": "assistant", "content": "I'll read the file now." }
   ],
-  "tools": [],
-  "tool_choice": {"type": "auto"}
+  "tools": [ ],
+  "tool_choice": { "type": "auto" }
 }
 ```
 
-**Fields worth memorising:**
-- `model`: which Claude model to use
-- `max_tokens`: output cap
-- `system`: behavior, constraints, and role
-- `messages`: the current conversation history
-- `tools`: the available structured tools
-- `tool_choice`: whether Claude may skip tools, must call a tool, or must call a specific tool
+The key fields to know:
 
-**Message roles:**
-- `user`: the current request or returned tool results
-- `assistant`: Claude's prior responses
-- `tool_result` content: returned tool outputs that become part of the next turn's context
-
-### `stop_reason` and loop control
-
-At the raw API layer, `stop_reason` is the reliable signal for what happens next.
-
-| `stop_reason` | Meaning | What to do |
-|---|---|---|
-| `"tool_use"` | Claude wants one or more tool calls | Execute tools, append results, continue |
-| `"end_turn"` | Claude is done | Present final answer |
-| `"max_tokens"` | Output was truncated | Retry or resume with adjusted settings |
-| `"stop_sequence"` | Custom stop sequence matched | Handle according to app logic |
-| `"pause_turn"` | Server-side tool loop hit an iteration boundary | Re-send the conversation to continue |
-
-> **Exam distinction:** if you're using the Agent SDK, the SDK drives the loop for you. If you're reasoning about the Messages API directly, you own the loop.
-
-### System prompt vs user prompt
-
-| Prompt type | Purpose |
+| Field | What it does |
 |---|---|
-| System prompt | Sets behavior, role, constraints, escalation rules, and output expectations |
-| User prompt | The actual task or request for the current interaction |
+| `model` | Which Claude model to use |
+| `max_tokens` | Hard cap on output length |
+| `system` | Claude's role, constraints, and output expectations — set once per session |
+| `messages` | The full conversation so far — you must resend this on every call |
+| `tools` | The structured tools Claude can call |
+| `tool_choice` | Whether Claude *may* use a tool, *must* use one, or *must* use a specific one |
 
-**Important nuance:** system prompt wording can accidentally bias tool selection. A keyword-heavy instruction like "always verify customer records first" can make Claude overuse `get_customer` even when `lookup_order` is the better first tool.
+**Claude has no memory between calls.** Your application is responsible for maintaining and sending the conversation history.
 
-### Context window fundamentals
+---
 
-Everything below consumes context:
-- system prompt
-- `CLAUDE.md` and rules
-- tool definitions
-- prior conversation turns
-- tool inputs and outputs
+## `stop_reason` — the loop control signal
 
-**Context failure modes (tested across all domains):**
-- *Lost in the middle*: important mid-input findings get underweighted
-- *Tool result bloat*: 40 returned fields when only 5 matter
-- *Progressive summarization loss*: dates, percentages, IDs, and customer expectations get blurred
+Every API response includes a `stop_reason` that tells you what happened and what to do next.
 
-**First-line mitigations:**
-- Put key findings at the beginning or end of long prompts
-- Trim tool outputs before they accumulate
-- Preserve critical facts in a structured facts block
-- Prefer structured upstream outputs over passing raw transcripts downstream
+```
+Request → Claude responds
+              │
+              ├─ stop_reason: "tool_use"    → Execute the tools, append results, call again
+              ├─ stop_reason: "end_turn"    → Claude is done. Use the result.
+              ├─ stop_reason: "max_tokens"  → Output was cut off. Handle or retry.
+              └─ stop_reason: "pause_turn"  → SDK loop hit a boundary. Re-send to continue.
+```
+
+If you are using the **Agent SDK**, you do not check `stop_reason` yourself for tool calls — the SDK handles that loop internally. You only inspect the final `ResultMessage` subtype (`success`, `error_max_turns`, etc.).
+
+If you are working directly with the **Messages API**, you own the loop and must handle `stop_reason` yourself.
+
+---
+
+## System prompt vs user prompt
+
+| | System prompt | User prompt |
+|---|---|---|
+| **Purpose** | Role, constraints, output format, escalation rules | The actual task for this interaction |
+| **When it applies** | Every turn in the conversation | The specific request right now |
+| **Exam trap** | Keyword-heavy system prompts can accidentally bias tool selection | Putting policy constraints here instead of in the system prompt |
+
+A system prompt saying "always verify customer records first" can make Claude overuse `get_customer` even when a different tool is the right first step. Be precise.
+
+---
+
+## `tool_choice` — controlling tool use
+
+| Value | Behaviour |
+|---|---|
+| `"auto"` (default) | Claude decides — may respond in text without calling a tool |
+| `"any"` | Claude *must* call at least one tool — no plain-text responses |
+| `{ "type": "tool", "name": "x" }` | Claude *must* call tool `x` specifically |
+| `"none"` | Tools are defined but Claude cannot call them |
+
+Use `"any"` when you need guaranteed structured output instead of prose. Use a forced tool when you need a specific extraction step to run first.
+
+---
+
+## The context window
+
+Everything in a request consumes context space:
+
+```
+[ system prompt ] + [ CLAUDE.md + rules ] + [ tool definitions ]
++ [ conversation history ] + [ tool inputs and outputs ]
+= total context used
+```
+
+**Why this matters:** as conversations grow, tool outputs accumulate. If you don't trim them, you'll hit the context limit — and Claude will start losing important information from the middle of long inputs (the "lost in the middle" effect).
+
+First-line mitigations:
+- Trim tool outputs to just the fields you need before appending them
+- Put the most important findings at the start or end of long prompts
+- Extract critical facts into a persistent structured block rather than leaving them buried in conversation history
+
+---
+
+## 📖 Go deeper
+
+Now read the official documentation for the core concepts above. These pages are short and precise:
+
+- **[Messages API overview](https://platform.claude.com/docs/en/api/messages)** — request structure, response shape, all fields explained
+- **[Tool use guide](https://platform.claude.com/docs/en/build-with-claude/tool-use)** — how tools work, `tool_choice`, handling tool results
+
+Come back after reading. The domain lessons build directly on this.
+
+---
+
+## Exam tips
+
+- Questions will mix API-layer and SDK-layer concepts. Always identify which layer the scenario is describing before choosing an answer.
+- `stop_reason: "tool_use"` in a question about the Messages API means "execute and continue". In an SDK context it's handled for you.
+- System prompt wording that inadvertently biases tool selection is a common question — the fix is always in the system prompt, not in the tools.
+- "Lightest effective fix" is the consistent pattern for correct answers across all domains.

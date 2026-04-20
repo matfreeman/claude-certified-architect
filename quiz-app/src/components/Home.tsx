@@ -86,33 +86,6 @@ export default function Home({ domains, totalQuestions, lessons, completedLesson
         </div>
       </section>
 
-      {/* Exam framing */}
-      <section className="home-framing">
-        <div className="section-inner">
-          <div className="framing-card">
-            <div className="framing-card-label">How to think about this exam</div>
-            <div className="framing-questions">
-              <div className="framing-q">
-                <span className="framing-q-num">1</span>
-                <span><strong>What layer is the problem at?</strong> Prompt · Tool definition · Workflow · Deterministic enforcement</span>
-              </div>
-              <div className="framing-q">
-                <span className="framing-q-num">2</span>
-                <span><strong>What scope is asked for?</strong> First fix · Root cause · System design · Immediate symptom</span>
-              </div>
-              <div className="framing-q">
-                <span className="framing-q-num">3</span>
-                <span><strong>Is the best answer the lightest fix?</strong> Correct answers are almost always the least-invasive effective solution</span>
-              </div>
-              <div className="framing-q">
-                <span className="framing-q-num">4</span>
-                <span><strong>Guarantee or suggestion?</strong> Money / security / compliance → hooks (deterministic). Style / preferences → prompts (probabilistic)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Domains */}
       <section className="home-section">
         <div className="section-inner">
