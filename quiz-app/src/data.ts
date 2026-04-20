@@ -1,5 +1,5 @@
 import { load as yamlLoad } from 'js-yaml'
-import type { Domain, Question } from './types'
+import type { Domain, Question, Lesson, LessonMeta } from './types'
 
 // ─── Domains ──────────────────────────────────────────────────────────────────
 
@@ -117,8 +117,6 @@ export const DOMAINS: Domain[] = [
 ]
 
 // ─── Questions — loaded from content/questions/domain-N.yaml ─────────────────
-// To add questions: edit the relevant domain-N.yaml file and append to its
-// `questions` list. No TypeScript changes required.
 
 interface RawQuestion {
   id: string
@@ -142,14 +140,13 @@ interface DomainFile {
   questions: RawQuestion[]
 }
 
-// Vite loads the raw YAML strings at build time via import.meta.glob
-const rawFiles = import.meta.glob('../content/questions/domain-*.yaml', {
+const rawQuestionFiles = import.meta.glob('../content/questions/domain-*.yaml', {
   as: 'raw',
   eager: true,
 }) as Record<string, string>
 
-export const QUESTIONS: Question[] = Object.entries(rawFiles)
-  .sort(([a], [b]) => a.localeCompare(b)) // stable domain-1 → domain-5 order
+export const QUESTIONS: Question[] = Object.entries(rawQuestionFiles)
+  .sort(([a], [b]) => a.localeCompare(b))
   .flatMap(([path, raw]) => {
     const domainNum = parseInt(path.match(/domain-(\d+)/)?.[1] ?? '0', 10)
     const file = yamlLoad(raw) as DomainFile
@@ -157,6 +154,41 @@ export const QUESTIONS: Question[] = Object.entries(rawFiles)
       ...q,
       domain: q.domain ?? domainNum,
     }))
+  })
+
+// ─── Lessons — loaded from content/learn/*.md ─────────────────────────────────
+// Each file has YAML frontmatter followed by the markdown lesson body.
+// Frontmatter fields: taskStatement, domain, title, minutes, concepts, docLinks
+
+const rawLessonFiles = import.meta.glob('../content/learn/*.md', {
+  as: 'raw',
+  eager: true,
+}) as Record<string, string>
+
+function parseFrontmatter(raw: string): { meta: LessonMeta; body: string } {
+  const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/m)
+  if (!fmMatch) {
+    return {
+      meta: {
+        taskStatement: '0.0',
+        domain: 0,
+        title: 'Untitled',
+        minutes: 5,
+        concepts: [],
+      },
+      body: raw,
+    }
+  }
+  const meta = yamlLoad(fmMatch[1]) as LessonMeta
+  return { meta, body: fmMatch[2].trim() }
+}
+
+export const LESSONS: Lesson[] = Object.entries(rawLessonFiles)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([path, raw]) => {
+    const slug = path.replace(/^.*\/([^/]+)\.md$/, '$1')
+    const { meta, body } = parseFrontmatter(raw)
+    return { ...meta, slug, body }
   })
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
@@ -179,4 +211,17 @@ export function getQuestionsForDomain(domainId: number | null): Question[] {
 
 export function getDomain(id: number): Domain {
   return DOMAINS.find((d) => d.id === id)!
+}
+
+export function getLessonsForDomain(domainId: number): Lesson[] {
+  return LESSONS.filter((l) => l.domain === domainId)
+}
+
+export function getLessonBySlug(slug: string): Lesson | undefined {
+  return LESSONS.find((l) => l.slug === slug)
+}
+
+export function getMicroQuizQuestions(taskStatement: string, max = 3): Question[] {
+  const matches = QUESTIONS.filter((q) => q.taskStatement === taskStatement)
+  return shuffle(matches).slice(0, max)
 }

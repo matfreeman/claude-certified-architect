@@ -30,7 +30,30 @@ export interface Domain {
   docLink: DocLink
 }
 
-export type Screen = 'home' | 'quiz' | 'results'
+// ─── LMS / Study mode ─────────────────────────────────────────────────────────
+
+export interface LessonMeta {
+  /** e.g. "1.1" or "0.0" for foundations */
+  taskStatement: string
+  /** 1–5, or 0 for cross-domain foundations */
+  domain: number
+  title: string
+  /** Estimated reading time in minutes */
+  minutes: number
+  /** Key terms shown as concept chips at the top of the lesson */
+  concepts: string[]
+  /** Primary doc links extracted from the lesson */
+  docLinks?: DocLink[]
+}
+
+export interface Lesson extends LessonMeta {
+  /** Slug used to identify the lesson file, e.g. "1.1-agentic-loop" */
+  slug: string
+  /** Full markdown body */
+  body: string
+}
+
+export type Screen = 'home' | 'learn' | 'lesson' | 'quiz' | 'results'
 
 export interface QuizState {
   questions: Question[]
@@ -39,6 +62,8 @@ export interface QuizState {
   revealed: Record<string, boolean>
   domainFilter: number | null // null = all domains
   startTime: number
+  /** If launched from a lesson, go back there on finish */
+  fromLesson?: string
 }
 
 export interface DomainScore {

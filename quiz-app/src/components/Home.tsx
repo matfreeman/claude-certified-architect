@@ -1,12 +1,19 @@
-import type { Domain } from '../types'
+import type { Domain, Lesson } from '../types'
 
 interface Props {
   domains: Domain[]
   totalQuestions: number
+  lessons: Lesson[]
+  completedLessons: Set<string>
   onStart: (domainFilter: number | null) => void
+  onStudy: () => void
 }
 
-export default function Home({ domains, totalQuestions, onStart }: Props) {
+export default function Home({ domains, totalQuestions, lessons, completedLessons, onStart, onStudy }: Props) {
+  const totalLessons = lessons.filter((l) => l.domain > 0).length
+  const doneLessons = lessons.filter((l) => l.domain > 0 && completedLessons.has(l.slug)).length
+  const studyStarted = doneLessons > 0
+
   return (
     <div className="home">
       {/* Header */}
@@ -33,35 +40,65 @@ export default function Home({ domains, totalQuestions, onStart }: Props) {
         </div>
       </header>
 
+      {/* Study / Practice dual CTA */}
+      <section className="home-modes">
+        <div className="section-inner">
+          <div className="mode-cards">
+            {/* Study mode */}
+            <div className="mode-card mode-card-study">
+              <div className="mode-card-icon">📖</div>
+              <h2 className="mode-card-title">Study the material</h2>
+              <p className="mode-card-desc">
+                Work through each domain lesson by lesson. Key concepts, code examples, and
+                exam tips — with a quick check at the end of each lesson.
+              </p>
+              {studyStarted && totalLessons > 0 && (
+                <div className="mode-card-progress">
+                  <div className="progress-track">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${Math.round((doneLessons / totalLessons) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="progress-count">{doneLessons}/{totalLessons} lessons</span>
+                </div>
+              )}
+              <button className="btn btn-study btn-lg" onClick={onStudy}>
+                {studyStarted ? 'Continue studying' : 'Start learning'}
+                <span className="btn-arrow">→</span>
+              </button>
+            </div>
+
+            {/* Practice mode */}
+            <div className="mode-card mode-card-practice">
+              <div className="mode-card-icon">🎯</div>
+              <h2 className="mode-card-title">Practice questions</h2>
+              <p className="mode-card-desc">
+                Test yourself with {totalQuestions} scenario-based questions across all 5 domains.
+                Immediate feedback, explanations, and docs links.
+              </p>
+              <button className="btn btn-primary btn-lg" onClick={() => onStart(null)}>
+                Start full practice exam
+                <span className="btn-arrow">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Domains */}
       <section className="home-section">
         <div className="section-inner">
           <h2 className="section-title">Exam Domains</h2>
           <div className="domain-grid">
             {domains.map((d) => (
-              <DomainCard key={d.id} domain={d} onStudy={() => onStart(d.id)} />
+              <DomainCard
+                key={d.id}
+                domain={d}
+                onStudy={onStudy}
+                onPractice={() => onStart(d.id)}
+              />
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="home-cta">
-        <div className="section-inner cta-inner">
-          <div className="cta-text">
-            <h2 className="cta-title">Ready to practice?</h2>
-            <p className="cta-desc">
-              Take a full mixed-domain quiz or focus on a specific area. Each question includes
-              the correct answer, a detailed explanation, and a link to the relevant
-              documentation.
-            </p>
-          </div>
-          <div className="cta-buttons">
-            <button className="btn btn-primary btn-lg" onClick={() => onStart(null)}>
-              Start Full Practice Exam
-              <span className="btn-arrow">→</span>
-            </button>
-            <p className="cta-hint">Or click a domain card above to study by topic</p>
           </div>
         </div>
       </section>
@@ -97,9 +134,20 @@ function MetaStat({ label, value }: { label: string; value: string }) {
   )
 }
 
-function DomainCard({ domain, onStudy }: { domain: Domain; onStudy: () => void }) {
+function DomainCard({
+  domain,
+  onStudy,
+  onPractice,
+}: {
+  domain: Domain
+  onStudy: () => void
+  onPractice: () => void
+}) {
   return (
-    <div className="domain-card" style={{ '--domain-color': domain.color, '--domain-bg': domain.bgColor } as React.CSSProperties}>
+    <div
+      className="domain-card"
+      style={{ '--domain-color': domain.color, '--domain-bg': domain.bgColor } as React.CSSProperties}
+    >
       <div className="domain-card-header">
         <span className="domain-weight">{domain.weight}%</span>
         <span className="domain-id">Domain {domain.id}</span>
@@ -112,8 +160,11 @@ function DomainCard({ domain, onStudy }: { domain: Domain; onStudy: () => void }
         ))}
       </ul>
       <div className="domain-card-footer">
-        <button className="btn btn-domain" onClick={onStudy}>
-          Study this domain
+        <button className="btn btn-study" onClick={onStudy}>
+          Study
+        </button>
+        <button className="btn btn-domain" onClick={onPractice}>
+          Practice
         </button>
         <a
           className="domain-doc-link"
