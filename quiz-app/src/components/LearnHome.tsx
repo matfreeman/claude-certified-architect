@@ -18,6 +18,28 @@ export default function LearnHome({
   onHome,
 }: Props) {
   const foundationsLesson = lessons.find((l) => l.domain === 0)
+
+  // Build the ordered learning path: foundations first, then domains 1–5
+  const learningPath = [
+    foundationsLesson ? { label: 'Foundations', slug: foundationsLesson.slug, domain: 0 } : null,
+    ...domains.map((d) => ({
+      label: `Domain ${d.id}`,
+      slug: lessons.find((l) => l.domain === d.id && !completedLessons.has(l.slug))?.slug
+        ?? lessons.filter((l) => l.domain === d.id).slice(-1)[0]?.slug
+        ?? '',
+      domain: d.id,
+    })),
+  ].filter(Boolean) as { label: string; slug: string; domain: number }[]
+
+  // Which step are we on?
+  const currentPathStep = (() => {
+    if (foundationsLesson && !completedLessons.has(foundationsLesson.slug)) return 0
+    for (let i = 0; i < domains.length; i++) {
+      const domainLessons = lessons.filter((l) => l.domain === domains[i].id)
+      if (domainLessons.some((l) => !completedLessons.has(l.slug))) return i + 1
+    }
+    return learningPath.length // all done
+  })()
   const foundationsDone = foundationsLesson
     ? completedLessons.has(foundationsLesson.slug)
     : false
@@ -59,6 +81,42 @@ export default function LearnHome({
           </div>
         )}
       </header>
+
+      {/* Recommended learning path */}
+      <section className="learn-home-section learn-path-section">
+        <div className="section-inner">
+          <h2 className="section-title">Recommended learning path</h2>
+          <p className="learn-path-hint">Work through in order — each domain builds on the last.</p>
+          <div className="learn-path-steps">
+            {learningPath.map((step, i) => {
+              const domainLessons = step.domain === 0
+                ? lessons.filter((l) => l.domain === 0)
+                : lessons.filter((l) => l.domain === step.domain)
+              const done = domainLessons.length > 0 && domainLessons.every((l) => completedLessons.has(l.slug))
+              const isCurrent = i === currentPathStep
+              const isLocked = i > currentPathStep
+              return (
+                <div key={step.slug} className={`learn-path-step ${done ? 'is-done' : ''} ${isCurrent ? 'is-current' : ''} ${isLocked ? 'is-locked' : ''}`}>
+                  <button
+                    className="learn-path-step-btn"
+                    onClick={() => step.slug && onSelectLesson(step.slug)}
+                    disabled={!step.slug}
+                  >
+                    <span className="learn-path-num">
+                      {done ? '✓' : i + 1}
+                    </span>
+                    <span className="learn-path-label">{step.label}</span>
+                    {isCurrent && <span className="learn-path-current-tag">Start here</span>}
+                  </button>
+                  {i < learningPath.length - 1 && (
+                    <span className="learn-path-arrow">→</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
 
       {/* Foundations lesson */}
       {foundationsLesson && (
