@@ -1,17 +1,18 @@
-import type { Domain, Lesson } from '../types'
+import type { Domain, Exercise, Lesson } from '../types'
 
 interface Props {
   domains: Domain[]
   totalQuestions: number
   lessons: Lesson[]
+  exercises: Exercise[]
   completedLessons: Set<string>
   onStart: (domainFilter: number | null) => void
   onStudy: () => void
 }
 
-export default function Home({ domains, totalQuestions, lessons, completedLessons, onStart, onStudy }: Props) {
-  const totalLessons = lessons.filter((l) => l.domain > 0).length
-  const doneLessons = lessons.filter((l) => l.domain > 0 && completedLessons.has(l.slug)).length
+export default function Home({ domains, totalQuestions, lessons, exercises, completedLessons, onStart, onStudy }: Props) {
+  const totalLessons = lessons.length
+  const doneLessons = lessons.filter((l) => completedLessons.has(l.slug)).length
   const studyStarted = doneLessons > 0
 
   return (
@@ -34,8 +35,8 @@ export default function Home({ domains, totalQuestions, lessons, completedLesson
           <div className="home-meta">
             <MetaStat label="Questions" value={totalQuestions.toString()} />
             <MetaStat label="Domains" value="5" />
+            <MetaStat label="Labs" value={String(exercises.length)} />
             <MetaStat label="Passing score" value="720 / 1000" />
-            <MetaStat label="Format" value="Multiple choice" />
           </div>
         </div>
       </header>
@@ -49,8 +50,8 @@ export default function Home({ domains, totalQuestions, lessons, completedLesson
               <div className="mode-card-icon">📖</div>
               <h2 className="mode-card-title">Study the material</h2>
               <p className="mode-card-desc">
-                Work through each domain lesson by lesson. Key concepts, code examples, and
-                exam tips — with a quick check at the end of each lesson.
+                Follow the full course path: foundations, domain lessons, domain checkpoints,
+                practical exercises, and a final practice exam.
               </p>
               {studyStarted && totalLessons > 0 && (
                 <div className="mode-card-progress">
@@ -72,7 +73,7 @@ export default function Home({ domains, totalQuestions, lessons, completedLesson
             {/* Practice mode */}
             <div className="mode-card mode-card-practice">
               <div className="mode-card-icon">🎯</div>
-              <h2 className="mode-card-title">Practice questions</h2>
+              <h2 className="mode-card-title">Practice exam</h2>
               <p className="mode-card-desc">
                 Test yourself with {totalQuestions} scenario-based questions across all 5 domains.
                 Immediate feedback, explanations, and docs links.

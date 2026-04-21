@@ -53,7 +53,33 @@ export interface Lesson extends LessonMeta {
   body: string
 }
 
-export type Screen = 'home' | 'learn' | 'lesson' | 'quiz' | 'results'
+export interface ExerciseMeta {
+  id: string
+  title: string
+  minutes: number
+  domains: number[]
+  taskStatements: string[]
+  prerequisites?: string[]
+  deliverables?: string[]
+  concepts?: string[]
+  docLinks?: DocLink[]
+  completionMode?: 'self_attest'
+}
+
+export interface Exercise extends ExerciseMeta {
+  slug: string
+  body: string
+}
+
+export type Screen = 'home' | 'learn' | 'lesson' | 'exercise' | 'readiness' | 'quiz' | 'results'
+
+export type QuizMode = 'practice' | 'checkpoint' | 'final'
+
+export interface QuizNavContext {
+  screen: 'home' | 'learn' | 'lesson' | 'exercise' | 'readiness'
+  lessonSlug?: string
+  exerciseSlug?: string
+}
 
 export interface QuizState {
   questions: Question[]
@@ -62,8 +88,10 @@ export interface QuizState {
   revealed: Record<string, boolean>
   domainFilter: number | null // null = all domains
   startTime: number
-  /** If launched from a lesson, go back there on finish */
-  fromLesson?: string
+  mode: QuizMode
+  title: string
+  navContext: QuizNavContext
+  sourceTaskStatement?: string
 }
 
 export interface DomainScore {
@@ -71,4 +99,40 @@ export interface DomainScore {
   total: number
   correct: number
   pct: number
+}
+
+export interface QuizSummary {
+  total: number
+  correct: number
+  pct: number
+  scaled: number
+  passed: boolean
+  domainScores: DomainScore[]
+  elapsed: number
+}
+
+export interface QuizAttempt {
+  id: string
+  mode: QuizMode
+  title: string
+  domainFilter: number | null
+  startedAt: number
+  completedAt: number
+  questionCount: number
+  correct: number
+  pct: number
+  scaled: number
+  passed: boolean
+}
+
+export interface CoverageRow {
+  taskStatement: string
+  label: string
+  domainId: number
+  lessons: Lesson[]
+  questionCount: number
+  exercises: Exercise[]
+  taught: boolean
+  checked: boolean
+  applied: boolean
 }

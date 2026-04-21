@@ -26,9 +26,10 @@ export default function Quiz({ quiz, onAnswer, onNext, onFinish, onHome }: Props
       {/* Top bar */}
       <header className="quiz-header">
         <button className="btn-ghost" onClick={onHome}>
-          ← Home
+          ← Back
         </button>
         <div className="quiz-progress-info">
+          <span className="quiz-title">{quiz.title}</span>
           <span className="quiz-count">
             {current + 1} / {questions.length}
           </span>

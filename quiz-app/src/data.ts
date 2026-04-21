@@ -1,5 +1,15 @@
 import { load as yamlLoad } from 'js-yaml'
-import type { Domain, Question, Lesson, LessonMeta } from './types'
+import type {
+  CoverageRow,
+  Domain,
+  Exercise,
+  ExerciseMeta,
+  Lesson,
+  LessonMeta,
+  Question,
+  QuizState,
+  QuizSummary,
+} from './types'
 
 // ─── Domains ──────────────────────────────────────────────────────────────────
 
@@ -116,6 +126,12 @@ export const DOMAINS: Domain[] = [
   },
 ]
 
+const TASK_LABELS = new Map(
+  DOMAINS.flatMap((domain) =>
+    domain.taskStatements.map((taskLabel) => [taskLabel.split(' ')[0], taskLabel] as const),
+  ),
+)
+
 // ─── Questions — loaded from content/questions/domain-N.yaml ─────────────────
 
 interface RawQuestion {
@@ -156,40 +172,85 @@ export const QUESTIONS: Question[] = Object.entries(rawQuestionFiles)
     }))
   })
 
+// ─── Shared markdown frontmatter parsing ──────────────────────────────────────
+
+function parseFrontmatter<TMeta>(raw: string, fallbackMeta: TMeta): { meta: TMeta; body: string } {
+  const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/m)
+  if (!fmMatch) {
+    return {
+      meta: fallbackMeta,
+      body: raw,
+    }
+  }
+  const meta = yamlLoad(fmMatch[1]) as TMeta
+  return { meta, body: fmMatch[2].trim() }
+}
+
 // ─── Lessons — loaded from content/learn/*.md ─────────────────────────────────
-// Each file has YAML frontmatter followed by the markdown lesson body.
-// Frontmatter fields: taskStatement, domain, title, minutes, concepts, docLinks
 
 const rawLessonFiles = import.meta.glob('../content/learn/*.md', {
   as: 'raw',
   eager: true,
 }) as Record<string, string>
 
-function parseFrontmatter(raw: string): { meta: LessonMeta; body: string } {
-  const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/m)
-  if (!fmMatch) {
-    return {
-      meta: {
-        taskStatement: '0.0',
-        domain: 0,
-        title: 'Untitled',
-        minutes: 5,
-        concepts: [],
-      },
-      body: raw,
-    }
-  }
-  const meta = yamlLoad(fmMatch[1]) as LessonMeta
-  return { meta, body: fmMatch[2].trim() }
-}
-
 export const LESSONS: Lesson[] = Object.entries(rawLessonFiles)
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([path, raw]) => {
     const slug = path.replace(/^.*\/([^/]+)\.md$/, '$1')
-    const { meta, body } = parseFrontmatter(raw)
+    const { meta, body } = parseFrontmatter<LessonMeta>(raw, {
+      taskStatement: '0.0',
+      domain: 0,
+      title: 'Untitled',
+      minutes: 5,
+      concepts: [],
+    })
     return { ...meta, slug, body }
   })
+
+// ─── Exercises — loaded from content/exercises/*.md ───────────────────────────
+
+const rawExerciseFiles = import.meta.glob('../content/exercises/*.md', {
+  as: 'raw',
+  eager: true,
+}) as Record<string, string>
+
+export const EXERCISES: Exercise[] = Object.entries(rawExerciseFiles)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([path, raw]) => {
+    const slug = path.replace(/^.*\/([^/]+)\.md$/, '$1')
+    const { meta, body } = parseFrontmatter<ExerciseMeta>(raw, {
+      id: slug,
+      title: 'Untitled Exercise',
+      minutes: 30,
+      domains: [],
+      taskStatements: [],
+      completionMode: 'self_attest',
+    })
+    return { ...meta, slug, body }
+  })
+
+// ─── Coverage rows ─────────────────────────────────────────────────────────────
+
+export const COVERAGE_ROWS: CoverageRow[] = DOMAINS.flatMap((domain) =>
+  domain.taskStatements.map((taskLabel) => {
+    const taskStatement = taskLabel.split(' ')[0]
+    const lessons = LESSONS.filter((lesson) => lesson.taskStatement === taskStatement)
+    const questionCount = QUESTIONS.filter((question) => question.taskStatement === taskStatement).length
+    const exercises = EXERCISES.filter((exercise) => exercise.taskStatements.includes(taskStatement))
+
+    return {
+      taskStatement,
+      label: taskLabel,
+      domainId: domain.id,
+      lessons,
+      questionCount,
+      exercises,
+      taught: lessons.length > 0,
+      checked: questionCount > 0,
+      applied: exercises.length > 0,
+    }
+  }),
+)
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 
@@ -203,9 +264,7 @@ export function shuffle<T>(arr: T[]): T[] {
 }
 
 export function getQuestionsForDomain(domainId: number | null): Question[] {
-  const pool = domainId
-    ? QUESTIONS.filter((q) => q.domain === domainId)
-    : QUESTIONS
+  const pool = domainId ? QUESTIONS.filter((q) => q.domain === domainId) : QUESTIONS
   return shuffle(pool)
 }
 
@@ -221,7 +280,64 @@ export function getLessonBySlug(slug: string): Lesson | undefined {
   return LESSONS.find((l) => l.slug === slug)
 }
 
+export function getExerciseBySlug(slug: string): Exercise | undefined {
+  return EXERCISES.find((exercise) => exercise.slug === slug)
+}
+
+export function getExercisesForDomain(domainId: number): Exercise[] {
+  return EXERCISES.filter((exercise) => exercise.domains.includes(domainId))
+}
+
+export function getFirstLessonForDomain(domainId: number): Lesson | undefined {
+  return LESSONS.find((lesson) => lesson.domain === domainId)
+}
+
+export function getNextLessonInCourse(currentSlug: string): Lesson | undefined {
+  const orderedLessons = LESSONS
+  const currentIndex = orderedLessons.findIndex((lesson) => lesson.slug === currentSlug)
+  if (currentIndex === -1) return undefined
+  return orderedLessons[currentIndex + 1]
+}
+
 export function getMicroQuizQuestions(taskStatement: string, max = 3): Question[] {
   const matches = QUESTIONS.filter((q) => q.taskStatement === taskStatement)
   return shuffle(matches).slice(0, max)
+}
+
+export function getTaskStatementLabel(taskStatement: string): string {
+  return TASK_LABELS.get(taskStatement) ?? taskStatement
+}
+
+export function getQuizSummary(quiz: QuizState, domains: Domain[] = DOMAINS): QuizSummary {
+  const { questions, answers } = quiz
+
+  const total = Object.values(answers).filter(Boolean).length
+  const correct = Object.entries(answers).filter(([id, answer]) => {
+    const question = questions.find((candidate) => candidate.id === id)
+    return question && answer === question.correct
+  }).length
+
+  const pct = total > 0 ? correct / total : 0
+  const scaled = Math.round(100 + pct * 900)
+  const passed = scaled >= 720
+
+  const domainScores = domains
+    .map((domain) => {
+      const domainQuestions = questions.filter((question) => question.domain === domain.id)
+      const answeredQuestions = domainQuestions.filter((question) => answers[question.id] !== undefined)
+      const domainCorrect = answeredQuestions.filter(
+        (question) => answers[question.id] === question.correct,
+      ).length
+      return {
+        domain,
+        total: domainQuestions.length,
+        correct: domainCorrect,
+        pct: answeredQuestions.length > 0 ? domainCorrect / answeredQuestions.length : 0,
+      }
+    })
+    .filter((domainScore) => domainScore.total > 0)
+
+  const elapsed = Math.round((Date.now() - quiz.startTime) / 1000)
+
+  return { total, correct, pct, scaled, passed, domainScores, elapsed }
 }

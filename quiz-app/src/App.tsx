@@ -1,13 +1,25 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { Screen, QuizState } from './types'
-import { DOMAINS, QUESTIONS, LESSONS, getQuestionsForDomain, getLessonBySlug, getMicroQuizQuestions } from './data'
+import type { QuizAttempt, QuizMode, QuizNavContext, QuizState, Screen } from './types'
+import {
+  COVERAGE_ROWS,
+  DOMAINS,
+  EXERCISES,
+  LESSONS,
+  QUESTIONS,
+  getDomain,
+  getExerciseBySlug,
+  getLessonBySlug,
+  getMicroQuizQuestions,
+  getQuestionsForDomain,
+  getQuizSummary,
+} from './data'
 import Home from './components/Home'
 import Quiz from './components/Quiz'
 import Results from './components/Results'
 import LearnHome from './components/LearnHome'
 import LessonViewer from './components/LessonViewer'
-
-// ─── Theme ────────────────────────────────────────────────────────────────────
+import ExerciseViewer from './components/ExerciseViewer'
+import Readiness from './components/Readiness'
 
 function useTheme() {
   const [dark, setDark] = useState(() => {
@@ -23,10 +35,8 @@ function useTheme() {
   return { dark, toggle: () => setDark((d) => !d) }
 }
 
-// ─── Learn progress ───────────────────────────────────────────────────────────
-
-function useLearnProgress() {
-  const [completedLessons, setCompleted] = useState<Set<string>>(() => {
+function useCourseProgress() {
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('completedLessons')
       return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
@@ -35,8 +45,26 @@ function useLearnProgress() {
     }
   })
 
-  const markComplete = useCallback((slug: string) => {
-    setCompleted((prev) => {
+  const [completedExercises, setCompletedExercises] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('completedExercises')
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
+    } catch {
+      return new Set()
+    }
+  })
+
+  const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>(() => {
+    try {
+      const stored = localStorage.getItem('quizAttempts')
+      return stored ? (JSON.parse(stored) as QuizAttempt[]) : []
+    } catch {
+      return []
+    }
+  })
+
+  const markLessonComplete = useCallback((slug: string) => {
+    setCompletedLessons((prev) => {
       const next = new Set(prev)
       next.add(slug)
       localStorage.setItem('completedLessons', JSON.stringify([...next]))
@@ -44,35 +72,133 @@ function useLearnProgress() {
     })
   }, [])
 
-  return { completedLessons, markComplete }
+  const markExerciseComplete = useCallback((slug: string) => {
+    setCompletedExercises((prev) => {
+      const next = new Set(prev)
+      next.add(slug)
+      localStorage.setItem('completedExercises', JSON.stringify([...next]))
+      return next
+    })
+  }, [])
+
+  const recordAttempt = useCallback((quiz: QuizState) => {
+    const summary = getQuizSummary(quiz, DOMAINS)
+    const attempt: QuizAttempt = {
+      id: `${quiz.mode}-${quiz.domainFilter ?? 'all'}-${Date.now()}`,
+      mode: quiz.mode,
+      title: quiz.title,
+      domainFilter: quiz.domainFilter,
+      startedAt: quiz.startTime,
+      completedAt: Date.now(),
+      questionCount: summary.total,
+      correct: summary.correct,
+      pct: summary.pct,
+      scaled: summary.scaled,
+      passed: summary.passed,
+    }
+
+    setQuizAttempts((prev) => {
+      const next = [attempt, ...prev].slice(0, 50)
+      localStorage.setItem('quizAttempts', JSON.stringify(next))
+      return next
+    })
+  }, [])
+
+  return {
+    completedLessons,
+    completedExercises,
+    quizAttempts,
+    markLessonComplete,
+    markExerciseComplete,
+    recordAttempt,
+  }
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+function getQuizTitle(mode: QuizMode, domainFilter: number | null): string {
+  if (mode === 'final') return 'Final practice exam'
+  if (mode === 'checkpoint' && domainFilter) return `Domain ${domainFilter} checkpoint`
+  if (mode === 'practice' && domainFilter) return `${getDomain(domainFilter).shortName} practice`
+  return 'Practice exam'
+}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const [quiz, setQuiz] = useState<QuizState | null>(null)
   const [currentLessonSlug, setCurrentLessonSlug] = useState<string | null>(null)
+  const [currentExerciseSlug, setCurrentExerciseSlug] = useState<string | null>(null)
   const { dark, toggle: toggleTheme } = useTheme()
-  const { completedLessons, markComplete } = useLearnProgress()
+  const {
+    completedLessons,
+    completedExercises,
+    quizAttempts,
+    markLessonComplete,
+    markExerciseComplete,
+    recordAttempt,
+  } = useCourseProgress()
 
-  // ── Quiz ──────────────────────────────────────────────────────────────────
+  const goToNavContext = useCallback((navContext: QuizNavContext) => {
+    if (navContext.screen === 'lesson' && navContext.lessonSlug) {
+      setCurrentLessonSlug(navContext.lessonSlug)
+      setScreen('lesson')
+    } else if (navContext.screen === 'exercise' && navContext.exerciseSlug) {
+      setCurrentExerciseSlug(navContext.exerciseSlug)
+      setScreen('exercise')
+    } else {
+      setScreen(navContext.screen)
+    }
+    setQuiz(null)
+  }, [])
 
   const startQuiz = useCallback(
-    (domainFilter: number | null, fromLesson?: string) => {
-      const questions = getQuestionsForDomain(domainFilter)
+    (domainFilter: number | null, options: { mode: QuizMode; navContext: QuizNavContext; title?: string }) => {
       setQuiz({
-        questions,
+        questions: getQuestionsForDomain(domainFilter),
         current: 0,
         answers: {},
         revealed: {},
         domainFilter,
         startTime: Date.now(),
-        fromLesson,
+        mode: options.mode,
+        title: options.title ?? getQuizTitle(options.mode, domainFilter),
+        navContext: options.navContext,
       })
       setScreen('quiz')
     },
     [],
+  )
+
+  const startHomePractice = useCallback(
+    (domainFilter: number | null) => {
+      if (domainFilter === null) {
+        startQuiz(null, { mode: 'final', navContext: { screen: 'home' } })
+        return
+      }
+      startQuiz(domainFilter, {
+        mode: 'practice',
+        navContext: { screen: 'home' },
+      })
+    },
+    [startQuiz],
+  )
+
+  const startCheckpoint = useCallback(
+    (domainId: number, navContext: QuizNavContext = { screen: 'learn' }) => {
+      startQuiz(domainId, {
+        mode: 'checkpoint',
+        navContext,
+      })
+    },
+    [startQuiz],
+  )
+
+  const startFinalPractice = useCallback(
+    (navContext: QuizNavContext = { screen: 'learn' }) => {
+      startQuiz(null, {
+        mode: 'final',
+        navContext,
+      })
+    },
+    [startQuiz],
   )
 
   const handleAnswer = useCallback((questionId: string, answer: 'A' | 'B' | 'C' | 'D') => {
@@ -97,20 +223,24 @@ export default function App() {
   }, [])
 
   const handleFinish = useCallback(() => {
+    if (!quiz) return
+    recordAttempt(quiz)
     setScreen('results')
-  }, [])
+  }, [quiz, recordAttempt])
 
   const handleRestart = useCallback(() => {
     if (!quiz) return
-    startQuiz(quiz.domainFilter, quiz.fromLesson)
+    startQuiz(quiz.domainFilter, {
+      mode: quiz.mode,
+      title: quiz.title,
+      navContext: quiz.navContext,
+    })
   }, [quiz, startQuiz])
 
   const handleHome = useCallback(() => {
     setScreen('home')
     setQuiz(null)
   }, [])
-
-  // ── Learn ─────────────────────────────────────────────────────────────────
 
   const openLearnHome = useCallback(() => {
     setScreen('learn')
@@ -121,38 +251,25 @@ export default function App() {
     setScreen('lesson')
   }, [])
 
-  const handleLessonComplete = useCallback(
-    (slug: string) => {
-      markComplete(slug)
-    },
-    [markComplete],
-  )
+  const openExercise = useCallback((slug: string) => {
+    setCurrentExerciseSlug(slug)
+    setScreen('exercise')
+  }, [])
 
-  const handleLessonQuiz = useCallback(
-    (taskStatement: string) => {
-      // Filter questions by task statement; fall back to domain if none match
-      const matching = QUESTIONS.filter((q) => q.taskStatement === taskStatement)
-      const domain = matching[0]?.domain ?? null
-      startQuiz(domain, currentLessonSlug ?? undefined)
-    },
-    [startQuiz, currentLessonSlug],
-  )
-
-  const handleBackToLearn = useCallback(() => {
-    if (quiz?.fromLesson) {
-      openLesson(quiz.fromLesson)
-    } else {
-      setScreen('learn')
-    }
-    setQuiz(null)
-  }, [quiz, openLesson])
-
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const openReadiness = useCallback(() => {
+    setScreen('readiness')
+  }, [])
 
   const currentLesson = currentLessonSlug ? getLessonBySlug(currentLessonSlug) : null
+  const currentExercise = currentExerciseSlug ? getExerciseBySlug(currentExerciseSlug) : null
 
-  const onLessonScreen = screen === 'lesson'
+  const onLessonScreen = screen === 'lesson' || screen === 'exercise'
   const onQuizScreen = screen === 'quiz' || screen === 'results'
+
+  const checkpointAttempts = quizAttempts.filter((attempt) => attempt.mode === 'checkpoint')
+  const bestFinalAttempt = quizAttempts
+    .filter((attempt) => attempt.mode === 'final')
+    .sort((a, b) => b.scaled - a.scaled)[0]
 
   return (
     <div className="app">
@@ -165,22 +282,22 @@ export default function App() {
         {dark ? (
           <>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="4"/>
-              <line x1="12" y1="2"  x2="12" y2="4"/>
-              <line x1="12" y1="20" x2="12" y2="22"/>
-              <line x1="4.22" y1="4.22"   x2="5.64" y2="5.64"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="2"  y1="12" x2="4"  y2="12"/>
-              <line x1="20" y1="12" x2="22" y2="12"/>
-              <line x1="4.22" y1="19.78"  x2="5.64" y2="18.36"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              <circle cx="12" cy="12" r="4" />
+              <line x1="12" y1="2" x2="12" y2="4" />
+              <line x1="12" y1="20" x2="12" y2="22" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="2" y1="12" x2="4" y2="12" />
+              <line x1="20" y1="12" x2="22" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
             </svg>
             Light
           </>
         ) : (
           <>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
             </svg>
             Dark
           </>
@@ -192,8 +309,9 @@ export default function App() {
           domains={DOMAINS}
           totalQuestions={QUESTIONS.length}
           lessons={LESSONS}
+          exercises={EXERCISES}
           completedLessons={completedLessons}
-          onStart={startQuiz}
+          onStart={startHomePractice}
           onStudy={openLearnHome}
         />
       )}
@@ -202,9 +320,16 @@ export default function App() {
         <LearnHome
           domains={DOMAINS}
           lessons={LESSONS}
+          exercises={EXERCISES}
           completedLessons={completedLessons}
-          onSelectDomain={() => {}} // handled via lesson navigation
+          completedExercises={completedExercises}
+          checkpointAttempts={checkpointAttempts}
+          finalExamAttempt={bestFinalAttempt}
           onSelectLesson={openLesson}
+          onSelectExercise={openExercise}
+          onStartCheckpoint={(domainId) => startCheckpoint(domainId, { screen: 'learn' })}
+          onStartFinalPractice={() => startFinalPractice({ screen: 'learn' })}
+          onReadiness={openReadiness}
           onHome={handleHome}
         />
       )}
@@ -215,10 +340,39 @@ export default function App() {
           allLessons={LESSONS}
           microQuizQuestions={getMicroQuizQuestions(currentLesson.taskStatement)}
           completedLessons={completedLessons}
-          onComplete={handleLessonComplete}
+          onComplete={markLessonComplete}
           onNavigate={openLesson}
           onLearnHome={openLearnHome}
-          onStartQuiz={handleLessonQuiz}
+          onReadiness={openReadiness}
+        />
+      )}
+
+      {screen === 'exercise' && currentExercise && (
+        <ExerciseViewer
+          exercise={currentExercise}
+          allExercises={EXERCISES}
+          completedExercises={completedExercises}
+          onComplete={markExerciseComplete}
+          onNavigate={openExercise}
+          onLearnHome={openLearnHome}
+          onReadiness={openReadiness}
+        />
+      )}
+
+      {screen === 'readiness' && (
+        <Readiness
+          domains={DOMAINS}
+          lessons={LESSONS}
+          exercises={EXERCISES}
+          coverageRows={COVERAGE_ROWS}
+          completedLessons={completedLessons}
+          completedExercises={completedExercises}
+          quizAttempts={quizAttempts}
+          onLearnHome={openLearnHome}
+          onSelectLesson={openLesson}
+          onSelectExercise={openExercise}
+          onStartCheckpoint={(domainId) => startCheckpoint(domainId, { screen: 'readiness' })}
+          onStartFinalPractice={() => startFinalPractice({ screen: 'readiness' })}
         />
       )}
 
@@ -228,7 +382,7 @@ export default function App() {
           onAnswer={handleAnswer}
           onNext={handleNext}
           onFinish={handleFinish}
-          onHome={onQuizScreen && quiz.fromLesson ? handleBackToLearn : handleHome}
+          onHome={() => goToNavContext(quiz.navContext)}
         />
       )}
 
@@ -237,9 +391,11 @@ export default function App() {
           quiz={quiz}
           domains={DOMAINS}
           onRestart={handleRestart}
-          onHome={quiz.fromLesson ? handleBackToLearn : handleHome}
+          onHome={() => goToNavContext(quiz.navContext)}
         />
       )}
+
+      {onQuizScreen && <div className="screen-sr-only" aria-hidden="true" />}
     </div>
   )
 }

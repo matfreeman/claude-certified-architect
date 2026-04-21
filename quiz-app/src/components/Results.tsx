@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import type { QuizState, Domain, DomainScore } from '../types'
+import type { QuizState, Domain, DomainScore, QuizSummary } from '../types'
+import { getQuizSummary } from '../data'
 
 interface Props {
   quiz: QuizState
@@ -10,36 +11,7 @@ interface Props {
 
 export default function Results({ quiz, domains, onRestart, onHome }: Props) {
   const { questions, answers } = quiz
-
-  const stats = useMemo(() => {
-    const total = Object.keys(answers).length
-    const correct = Object.entries(answers).filter(([id, ans]) => {
-      const q = questions.find((q) => q.id === id)
-      return q && ans === q.correct
-    }).length
-
-    // Scaled score: map 0-100% → 100-1000
-    const pct = total > 0 ? correct / total : 0
-    const scaled = Math.round(100 + pct * 900)
-    const passed = scaled >= 720
-
-    // Per-domain breakdown
-    const domainScores: DomainScore[] = domains.map((d) => {
-      const dQuestions = questions.filter((q) => q.domain === d.id)
-      const dAnswered = dQuestions.filter((q) => answers[q.id] !== undefined)
-      const dCorrect = dAnswered.filter((q) => answers[q.id] === q.correct).length
-      return {
-        domain: d,
-        total: dQuestions.length,
-        correct: dCorrect,
-        pct: dAnswered.length > 0 ? dCorrect / dAnswered.length : 0,
-      }
-    }).filter((d) => d.total > 0)
-
-    const elapsed = Math.round((Date.now() - quiz.startTime) / 1000)
-
-    return { total, correct, pct, scaled, passed, domainScores, elapsed }
-  }, [questions, answers, domains, quiz.startTime])
+  const stats = useMemo<QuizSummary>(() => getQuizSummary(quiz, domains), [quiz, domains])
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60)
@@ -50,12 +22,13 @@ export default function Results({ quiz, domains, onRestart, onHome }: Props) {
   return (
     <div className="results">
       <header className="results-header">
-        <button className="btn-ghost" onClick={onHome}>← Home</button>
+        <button className="btn-ghost" onClick={onHome}>← Back</button>
       </header>
 
       <main className="results-main">
         {/* Score card */}
         <div className={`score-card ${stats.passed ? 'score-pass' : 'score-fail'}`}>
+          <div className="score-context">{quiz.title}</div>
           <div className="score-label">{stats.passed ? '🎉 Practice Passed' : '📚 Keep Studying'}</div>
           <div className="score-big">{stats.scaled}</div>
           <div className="score-sub">Scaled Score (passing: 720)</div>
@@ -118,10 +91,10 @@ export default function Results({ quiz, domains, onRestart, onHome }: Props) {
         {/* Actions */}
         <div className="results-actions">
           <button className="btn btn-primary btn-lg" onClick={onRestart}>
-            Retake Quiz
+            Retake {quiz.mode === 'checkpoint' ? 'checkpoint' : quiz.mode === 'final' ? 'final exam' : 'quiz'}
           </button>
           <button className="btn btn-secondary btn-lg" onClick={onHome}>
-            Back to Home
+            Back
           </button>
         </div>
       </main>
