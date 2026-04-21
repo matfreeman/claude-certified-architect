@@ -1,4 +1,6 @@
 import type { Domain, Exercise, Lesson, QuizAttempt } from '../types'
+import { getExerciseStackAreas, getLessonStackAreas } from '../data'
+import StackBadges from './StackBadges'
 
 interface Props {
   domains: Domain[]
@@ -32,6 +34,7 @@ export default function LearnHome({
   onHome,
 }: Props) {
   const foundationsLesson = lessons.find((lesson) => lesson.domain === 0)
+  const foundationsStackAreas = foundationsLesson ? getLessonStackAreas(foundationsLesson) : []
 
   const totalCourseItems = lessons.length + exercises.length + domains.length + 1
   const completedLessonCount = lessons.filter((lesson) => completedLessons.has(lesson.slug)).length
@@ -180,6 +183,7 @@ export default function LearnHome({
                   <div className="foundations-card-meta">
                     {foundationsLesson.minutes} min · Required before the domain checkpoints make sense
                   </div>
+                  <StackBadges areas={foundationsStackAreas} dense />
                 </div>
               </div>
               <span className="foundations-arrow">→</span>
@@ -227,6 +231,7 @@ export default function LearnHome({
                   <ul className="learn-lesson-list">
                     {domainLessons.map((lesson) => {
                       const done = completedLessons.has(lesson.slug)
+                      const stackAreas = getLessonStackAreas(lesson)
                       return (
                         <li key={lesson.slug}>
                           <button
@@ -234,7 +239,10 @@ export default function LearnHome({
                             onClick={() => onSelectLesson(lesson.slug)}
                           >
                             <span className="lesson-status-dot">{done ? '✓' : '○'}</span>
-                            <span className="lesson-item-title">{lesson.taskStatement} {lesson.title}</span>
+                            <span className="lesson-item-main">
+                              <span className="lesson-item-title">{lesson.taskStatement} {lesson.title}</span>
+                              <StackBadges areas={stackAreas} dense />
+                            </span>
                             <span className="lesson-item-mins">{lesson.minutes}m</span>
                           </button>
                         </li>
@@ -306,6 +314,7 @@ export default function LearnHome({
           <div className="exercise-grid">
             {exercises.map((exercise) => {
               const done = completedExercises.has(exercise.slug)
+              const stackAreas = getExerciseStackAreas(exercise)
               return (
                 <button
                   key={exercise.slug}
@@ -320,6 +329,7 @@ export default function LearnHome({
                   <p className="domain-card-desc">
                     {exercise.deliverables?.[0] ?? 'Hands-on reinforcement tied to the exam domains.'}
                   </p>
+                  <StackBadges areas={stackAreas} dense />
                   <span className="foundations-card-meta">{exercise.minutes} min</span>
                 </button>
               )

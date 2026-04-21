@@ -30,6 +30,22 @@ export interface Domain {
   docLink: DocLink
 }
 
+export type StackAreaKey =
+  | 'cross_stack'
+  | 'agent_sdk'
+  | 'claude_code'
+  | 'mcp'
+  | 'claude_api'
+  | 'application_layer'
+
+export interface StackArea {
+  key: StackAreaKey
+  label: string
+  description: string
+  color: string
+  bgColor: string
+}
+
 // ─── LMS / Study mode ─────────────────────────────────────────────────────────
 
 export interface LessonMeta {

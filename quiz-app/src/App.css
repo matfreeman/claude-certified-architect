@@ -1125,6 +1125,11 @@ a:hover { text-decoration: underline; }
   margin-bottom: 4px;
 }
 .foundations-card-meta { font-size: 12px; color: var(--text-3); }
+.foundations-card-left > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .foundations-arrow { font-size: 18px; color: var(--text-3); }
 
 /* Learn domain grid */
@@ -1202,7 +1207,14 @@ a:hover { text-decoration: underline; }
   text-align: center;
 }
 .learn-lesson-item.is-done .lesson-status-dot { color: var(--correct); }
-.lesson-item-title { flex: 1; line-height: 1.4; }
+.lesson-item-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.lesson-item-title { line-height: 1.4; }
 .lesson-item-mins { color: var(--text-3); font-size: 11px; white-space: nowrap; }
 
 .learn-domain-progress {
@@ -1454,6 +1466,47 @@ a:hover { text-decoration: underline; }
   border-radius: 20px;
 }
 .lesson-mins { font-size: 12px; color: var(--text-3); }
+
+.lesson-stack-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.lesson-stack-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.stack-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.stack-chip-row.is-dense {
+  gap: 6px;
+}
+.stack-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--stack-color, var(--accent));
+  background: var(--stack-bg, var(--accent-dim));
+  border: 1px solid color-mix(in srgb, var(--stack-color, var(--accent)) 20%, var(--border));
+}
+.stack-chip-row.is-dense .stack-chip {
+  min-height: 22px;
+  padding: 3px 8px;
+  font-size: 10px;
+}
 
 .lesson-title {
   font-size: clamp(20px, 3.5vw, 30px);

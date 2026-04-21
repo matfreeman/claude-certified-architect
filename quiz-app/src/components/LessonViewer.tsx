@@ -6,7 +6,8 @@ import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/
 import mermaid from 'mermaid'
 import type { Components } from 'react-markdown'
 import type { Lesson, Question } from '../types'
-import { DOMAINS } from '../data'
+import { DOMAINS, getLessonStackAreas } from '../data'
+import StackBadges from './StackBadges'
 
 // ─── Mermaid ──────────────────────────────────────────────────────────────────
 
@@ -315,6 +316,7 @@ export default function LessonViewer({
 
   const isComplete = completedLessons.has(lesson.slug)
   const domain = DOMAINS.find((d) => d.id === lesson.domain)
+  const stackAreas = getLessonStackAreas(lesson)
 
   // Lessons in the same domain (for sidebar)
   const siblingLessons = allLessons.filter(
@@ -411,6 +413,11 @@ export default function LessonViewer({
             <span className="lesson-mins">⏱ {lesson.minutes} min read</span>
           </div>
           <h1 className="lesson-title">{lesson.title}</h1>
+
+          <div className="lesson-stack-block">
+            <div className="lesson-stack-label">Where this sits in the stack</div>
+            <StackBadges areas={stackAreas} />
+          </div>
 
           {/* Concept chips */}
           {lesson.concepts.length > 0 && (

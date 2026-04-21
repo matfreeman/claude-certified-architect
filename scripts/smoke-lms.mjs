@@ -189,6 +189,8 @@ async function run() {
     await clickButton(client, '/The Agentic Loop Lifecycle/i')
     const lessonText = await client.evaluate('document.body.innerText')
     assert(lessonText.includes('The Agentic Loop Lifecycle'), 'Foundations next action should open Domain 1 lesson 1.1')
+    assert(/where this sits in the stack/i.test(lessonText), 'Lesson pages should explain stack context')
+    assert(lessonText.includes('Agent SDK'), 'The agent loop lesson should be tagged to the Agent SDK layer')
 
     await client.navigate('http://127.0.0.1:4173/')
     await setCourseState(client, {
@@ -229,6 +231,7 @@ async function run() {
     const exerciseText = await client.evaluate('document.body.innerText')
     assert(exerciseText.includes('EXPECTED DELIVERABLES'), 'Exercise page should render deliverables')
     assert(exerciseText.includes('Why this matters for the exam'), 'Exercise page should explain exam relevance')
+    assert(exerciseText.includes('MCP'), 'Exercise pages should show stack labels when multiple layers are involved')
 
     console.log('LMS smoke test passed.')
   } finally {

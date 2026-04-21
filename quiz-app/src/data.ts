@@ -7,6 +7,8 @@ import type {
   Lesson,
   LessonMeta,
   Question,
+  StackArea,
+  StackAreaKey,
   QuizState,
   QuizSummary,
 } from './types'
@@ -131,6 +133,94 @@ const TASK_LABELS = new Map(
     domain.taskStatements.map((taskLabel) => [taskLabel.split(' ')[0], taskLabel] as const),
   ),
 )
+
+export const STACK_AREAS: Record<StackAreaKey, StackArea> = {
+  cross_stack: {
+    key: 'cross_stack',
+    label: 'Full stack overview',
+    description: 'Connects Claude Code, the Agent SDK, MCP, the Claude API, and application controls.',
+    color: '#475569',
+    bgColor: 'rgba(71,85,105,0.12)',
+  },
+  agent_sdk: {
+    key: 'agent_sdk',
+    label: 'Agent SDK',
+    description: 'Agent loops, subagents, hooks, streaming messages, and session control.',
+    color: '#D97706',
+    bgColor: 'rgba(217,119,6,0.12)',
+  },
+  claude_code: {
+    key: 'claude_code',
+    label: 'Claude Code',
+    description: 'Project configuration, slash commands, skills, built-in tools, and team workflows.',
+    color: '#059669',
+    bgColor: 'rgba(5,150,105,0.12)',
+  },
+  mcp: {
+    key: 'mcp',
+    label: 'MCP',
+    description: 'External tools, resources, server configuration, and structured protocol behavior.',
+    color: '#7C3AED',
+    bgColor: 'rgba(124,58,237,0.12)',
+  },
+  claude_api: {
+    key: 'claude_api',
+    label: 'Claude API',
+    description: 'Prompting, tool use, structured outputs, validation loops, and batch processing.',
+    color: '#2563EB',
+    bgColor: 'rgba(37,99,235,0.12)',
+  },
+  application_layer: {
+    key: 'application_layer',
+    label: 'Application layer',
+    description: 'Deterministic workflow logic, escalation rules, review flows, and reliability controls.',
+    color: '#DC2626',
+    bgColor: 'rgba(220,38,38,0.12)',
+  },
+}
+
+const TASK_STACK_AREA_KEYS: Record<string, StackAreaKey[]> = {
+  '0.0': ['cross_stack'],
+  '1.1': ['agent_sdk', 'application_layer'],
+  '1.2': ['agent_sdk', 'application_layer'],
+  '1.3': ['agent_sdk', 'application_layer'],
+  '1.4': ['agent_sdk', 'application_layer'],
+  '1.5': ['agent_sdk'],
+  '1.6': ['agent_sdk', 'application_layer'],
+  '1.7': ['agent_sdk', 'claude_code'],
+  '2.1': ['mcp', 'claude_api'],
+  '2.2': ['mcp', 'application_layer'],
+  '2.3': ['mcp', 'claude_api'],
+  '2.4': ['mcp', 'claude_code'],
+  '2.5': ['claude_code'],
+  '3.1': ['claude_code'],
+  '3.2': ['claude_code'],
+  '3.3': ['claude_code'],
+  '3.4': ['claude_code'],
+  '3.5': ['claude_code'],
+  '3.6': ['claude_code', 'application_layer'],
+  '4.1': ['claude_api'],
+  '4.2': ['claude_api'],
+  '4.3': ['claude_api', 'application_layer'],
+  '4.4': ['claude_api', 'application_layer'],
+  '4.5': ['claude_api'],
+  '4.6': ['claude_api', 'application_layer'],
+  '5.1': ['application_layer'],
+  '5.2': ['application_layer'],
+  '5.3': ['application_layer', 'agent_sdk'],
+  '5.4': ['claude_code', 'application_layer'],
+  '5.5': ['application_layer', 'claude_api'],
+  '5.6': ['application_layer', 'claude_api'],
+}
+
+const STACK_AREA_ORDER: StackAreaKey[] = [
+  'cross_stack',
+  'agent_sdk',
+  'claude_code',
+  'mcp',
+  'claude_api',
+  'application_layer',
+]
 
 // ─── Questions — loaded from content/questions/domain-N.yaml ─────────────────
 
@@ -306,6 +396,23 @@ export function getMicroQuizQuestions(taskStatement: string, max = 3): Question[
 
 export function getTaskStatementLabel(taskStatement: string): string {
   return TASK_LABELS.get(taskStatement) ?? taskStatement
+}
+
+export function getLessonStackAreas(lesson: Lesson): StackArea[] {
+  const keys = TASK_STACK_AREA_KEYS[lesson.taskStatement] ?? []
+  return keys.map((key) => STACK_AREAS[key])
+}
+
+export function getExerciseStackAreas(exercise: Exercise): StackArea[] {
+  const seen = new Set<StackAreaKey>()
+
+  for (const taskStatement of exercise.taskStatements) {
+    for (const key of TASK_STACK_AREA_KEYS[taskStatement] ?? []) {
+      seen.add(key)
+    }
+  }
+
+  return STACK_AREA_ORDER.filter((key) => seen.has(key)).map((key) => STACK_AREAS[key])
 }
 
 export function getQuizSummary(quiz: QuizState, domains: Domain[] = DOMAINS): QuizSummary {

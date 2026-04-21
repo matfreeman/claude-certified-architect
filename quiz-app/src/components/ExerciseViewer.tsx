@@ -1,7 +1,8 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Exercise } from '../types'
-import { DOMAINS } from '../data'
+import { DOMAINS, getExerciseStackAreas } from '../data'
+import StackBadges from './StackBadges'
 
 interface Props {
   exercise: Exercise
@@ -26,6 +27,7 @@ export default function ExerciseViewer({
   const prevExercise = currentIdx > 0 ? allExercises[currentIdx - 1] : null
   const nextExercise = currentIdx < allExercises.length - 1 ? allExercises[currentIdx + 1] : null
   const isComplete = completedExercises.has(exercise.slug)
+  const stackAreas = getExerciseStackAreas(exercise)
 
   return (
     <div className="lesson-layout">
@@ -69,6 +71,11 @@ export default function ExerciseViewer({
           </div>
 
           <h1 className="lesson-title">{exercise.title}</h1>
+
+          <div className="lesson-stack-block">
+            <div className="lesson-stack-label">Where this sits in the stack</div>
+            <StackBadges areas={stackAreas} />
+          </div>
 
           {exercise.concepts && exercise.concepts.length > 0 && (
             <div className="concept-chips">
