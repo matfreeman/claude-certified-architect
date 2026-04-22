@@ -566,27 +566,44 @@ This matches the exam guide's wording: first map structure, then identify high-i
 
 ### 1.7 Session State, Resumption, and Forking
 
-**Session options:**
+**What a session is:** A session is the conversation history the SDK accumulates while an agent works. It contains the prompt, tool calls, tool results, and responses. The SDK writes it to disk automatically so you can return later with full prior context.
 
-| Option | Python | TypeScript | What it does |
-|---|---|---|---|
-| Continue most recent | `ClaudeSDKClient` | `continue: true` | Picks up the most recent session in cwd |
-| Resume by ID | `resume=session_id` | `resume: sessionId` | Resumes a specific past session |
-| Fork | `fork_session=True` | `forkSession: true` | Creates a new session branching from existing history |
+**Critical distinction:** sessions persist the **conversation**, not the **filesystem**. If the agent edited files, resuming the session does not give you an isolated copy of those edits. Use file checkpointing for file-state branching or rollback.
 
-**Capture session ID:**
+**When session management matters:** only when you send multiple prompts that should share context. Within a single `query()` call, the agent already handles its own internal turns. Permission prompts and `AskUserQuestion` stay in-loop and do not require resume logic.
+
+**Choose an approach:**
+
+| Situation | What to use | Why |
+|---|---|---|
+| One-shot task, no follow-up | One `query()` call | Nothing extra needed |
+| Multi-turn conversation in one process | Python `ClaudeSDKClient` or TypeScript `continue: true` | Lets the SDK keep using the same conversation |
+| Restart process and continue the latest session | Python `continue_conversation=True` or TypeScript `continue: true` | Reopens the most recent session in the current directory |
+| Return to a specific old session | `resume=session_id` / `resume: sessionId` | Needed when you track multiple sessions |
+| Try an alternative approach without losing the original | `fork_session=True` / `forkSession: true` | Creates a new branch of history |
+| Stateless task with no disk persistence | TypeScript `persistSession: false` | Session lives only in memory for that call |
+
+Python always persists sessions to disk. `persistSession: false` is TypeScript-only.
+
+**Continue vs resume vs fork:**
+- **Continue:** find the most recent session in the current directory automatically
+- **Resume:** reopen a specific session by ID
+- **Fork:** create a new session that starts with a copy of an existing session's history
+
+**Automatic session management:** In Python, `ClaudeSDKClient` is the cleanest way to run multi-turn conversations within one process because each `client.query()` continues the same session automatically. In stable TypeScript, you usually make another `query()` call with `continue: true`.
+
+**Capture session ID:** Resume and fork require a session ID. Read it from `ResultMessage.session_id`, which the docs say is present on every result message, even if the run ended in error.
 
 ```python
 async for message in query(prompt="Analyze the auth module", options=...):
     if isinstance(message, ResultMessage):
-        session_id = message.session_id  # Save this!
+        session_id = message.session_id
         print(f"Session: {session_id}")
 ```
 
 **Resume a specific session:**
 
 ```python
-# Later, with a follow-up question — agent has full prior context
 async for message in query(
     prompt="Now implement the refactoring you suggested",
     options=ClaudeAgentOptions(
@@ -597,42 +614,36 @@ async for message in query(
     ...
 ```
 
+Common reasons to resume from the docs:
+- follow up on prior analysis without re-reading files
+- recover from `error_max_turns` or `error_max_budget_usd`
+- restore a conversation after a process restart
+
 **Fork to explore divergent approaches:**
 
 ```python
-# Fork: try OAuth2 without losing the JWT analysis
 forked_id = None
 async for message in query(
     prompt="Instead of JWT, implement OAuth2",
     options=ClaudeAgentOptions(resume=session_id, fork_session=True),
 ):
     if isinstance(message, ResultMessage):
-        forked_id = message.session_id  # NEW session ID for the fork
-
-# Original session_id still points to the JWT analysis — untouched
+        forked_id = message.session_id
 ```
 
-**When to resume vs start fresh:**
-- **Resume:** Prior context is mostly valid, tool results are still accurate
-- **Start fresh with structured summary:** Prior tool results are stale (files changed significantly)
-- **Fork:** Want to explore divergent approaches from a shared baseline
+Forking branches conversation history, not the filesystem. If the fork edits files, those changes are real in the working directory.
 
-**After resuming, inform the agent about file changes:**
-```
-"Since our last session, auth.py was refactored — the JWTManager class was split into 
-TokenIssuer and TokenValidator. Please re-read auth.py before continuing."
-```
+**If `resume` seems to start fresh:** the most common cause is a mismatched `cwd`. Sessions live under `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`, where `<encoded-cwd>` is the absolute working directory with non-alphanumeric characters replaced by `-`. The session file also has to exist on the current machine.
 
-**Session storage location:** `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`
-The `encoded-cwd` is the absolute path with non-alphanumeric chars replaced by `-`.
-A session from `/Users/me/proj` is stored under `-Users-me-proj`.
+**Resuming across hosts:** The docs give two main approaches:
+- move the session file to the same path on the new host and keep `cwd` consistent
+- avoid transcript resume and pass important analysis/results into a fresh session instead
 
-**`--resume` in CLI (Claude Code):**
-```bash
-claude --resume my-investigation-session "What did we find about the auth bug?"
-```
+For shared infrastructure or serverless setups, the docs point to a `SessionStore` adapter.
 
-**Related CLI study point:** `context: fork` isolates a skill invocation, while `--fork-session` is the CLI-side session forking concept. Exam questions may contrast these, so memorize the distinction even if you usually work through the SDK's `fork_session` / `forkSession` options.
+**Session utilities:** Both SDKs expose helpers for listing sessions, reading session messages, getting session info, renaming sessions, and tagging sessions. These are useful for building session pickers or transcript viewers.
+
+**Related CLI study point:** `context: fork` isolates a skill invocation, while `--fork-session` is the CLI-side session branching concept. They are related ideas, but not the same mechanism.
 
 **Doc link:** https://code.claude.com/docs/en/agent-sdk/sessions
 
