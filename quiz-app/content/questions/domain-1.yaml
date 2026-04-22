@@ -274,21 +274,21 @@ questions:
       Prompt chaining (A) works for predictable multi-aspect reviews, not open-ended
       exploration. Options C and D bypass the discovery phase needed to prioritize effectively.
     docLink:
-      text: "Task decomposition strategies"
-      url: "https://code.claude.com/docs/en/agent-sdk/overview"
+      text: "Prompting best practices: chain complex prompts"
+      url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
     optionLinks:
       A:
         text: "Prompt chaining — sequential multi-step processing"
-        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
       B:
-        text: "Dynamic adaptive decomposition"
-        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+        text: "Plan-first exploration and adaptive workflows"
+        url: "https://code.claude.com/docs/en/best-practices"
       C:
         text: "Direct execution vs plan-first approaches"
         url: "https://code.claude.com/docs"
       D:
         text: "Fixed pipeline patterns"
-        url: "https://code.claude.com/docs/en/agent-sdk/overview"
+        url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
 
   - id: d1_context_pass
     taskStatement: "1.3"

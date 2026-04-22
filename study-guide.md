@@ -398,20 +398,22 @@ handoff_summary = {
 
 ### 1.5 Agent SDK Hooks for Tool Call Interception and Data Normalization
 
-**Hook types and when they fire:**
+**What this task statement actually covers:** The official hooks docs include many lifecycle events, but the exam guide's Task Statement 1.5 is narrower. The core ideas are:
 
-| Hook | Fires when | Common use |
-|---|---|---|
-| `PreToolUse` | Before a tool executes | Block dangerous commands, validate inputs, modify inputs |
-| `PostToolUse` | After a tool returns | Normalize output data, audit, trigger side effects |
-| `TeammateIdle` | When an agent teammate is about to go idle | Enforce quality gates before the teammate stops |
-| `PostToolUseFailure` | After a tool fails | Handle/log errors |
-| `UserPromptSubmit` | When a prompt is submitted | Inject additional context |
-| `Stop` | When agent finishes | Save session state, validate result |
-| `SubagentStart` / `SubagentStop` | Subagent spawns/completes | Track parallel tasks, aggregate results |
-| `SessionStart` | Session initializes | Inject environment context, initialize telemetry, load defaults |
-| `PreCompact` | Before context compaction | Archive full transcript |
-| `Notification` | Agent status messages | Forward to Slack/PagerDuty |
+- intercept a tool call before it runs
+- normalize or annotate a tool result after it returns
+- use hooks instead of prompt-only instructions when a rule must always hold
+
+So the exam focus is mostly `PreToolUse` and `PostToolUse`, not memorizing the full hook catalog.
+
+**Exam-relevant hook events:**
+
+| Hook | Why it matters here |
+|---|---|
+| `PreToolUse` | Block, allow, or rewrite a tool call before execution |
+| `PostToolUse` | Normalize or annotate the result before the model reasons over it |
+| `PostToolUseFailure` | Operationally useful, but secondary to the exam objective |
+| Other hook events | Real and documented, but not the main point of Task Statement 1.5 |
 
 **PostToolUse hook — normalizing heterogeneous data formats:**
 
@@ -421,7 +423,7 @@ async def normalize_tool_outputs(input_data, tool_use_id, context):
     if input_data["hook_event_name"] != "PostToolUse":
         return {}
     
-    tool_output = input_data.get("tool_output", {})
+    tool_output = dict(input_data.get("tool_response", {}))
     
     # Different tools return dates in different formats — normalize to ISO 8601
     if "timestamp" in tool_output:
@@ -439,7 +441,7 @@ async def normalize_tool_outputs(input_data, tool_use_id, context):
     
     return {
         "hookSpecificOutput": {
-            "hookEventName": "PostToolUse",
+            "hookEventName": input_data["hook_event_name"],
             "additionalContext": f"Normalized output: {json.dumps(tool_output)}"
         }
     }
@@ -450,17 +452,21 @@ async def normalize_tool_outputs(input_data, tool_use_id, context):
 ```python
 async def enforce_refund_policy(input_data, tool_use_id, context):
     """Block refunds exceeding $500 auto-approval threshold."""
+    if input_data["hook_event_name"] != "PreToolUse":
+        return {}
+
     if input_data["tool_name"] == "process_refund":
         amount = input_data["tool_input"].get("amount", 0)
         if amount > 500:
             return {
                 "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
+                    "hookEventName": input_data["hook_event_name"],
                     "permissionDecision": "deny",
                     "permissionDecisionReason": f"Refund of ${amount} exceeds $500 limit. Escalate to human agent."
                 },
                 "systemMessage": "This refund requires human approval. Please escalate using escalate_to_human tool."
             }
+
     return {}
 
 options = ClaudeAgentOptions(
@@ -492,7 +498,29 @@ options = ClaudeAgentOptions(
 
 ### 1.6 Task Decomposition Strategies
 
-**Two decomposition patterns:**
+**What we mean by this term:** There is not a single Claude docs page called "task decomposition strategies." In this guide, the term is an exam-study umbrella for how you break a large problem into smaller pieces, choose the order of those pieces, and decide whether work should stay in the main agent or move to subagents.
+
+That said, one of the key patterns inside this topic — **prompt chaining** — is documented directly in Anthropic's prompt-engineering guidance as "Chain complex prompts."
+
+The official docs cover the pieces separately:
+
+- **Prompting best practices** covers **Chain complex prompts**
+- **Subagents in the SDK** explains context isolation, delegation, and parallelization
+- **Best practices** explains explore first, then plan, then implement
+- **Context window** explains why tighter scoping beats stuffing everything into one conversation
+
+Task Statement 1.6 turns those ideas into an architectural judgment call.
+
+**Decomposition vs execution:**
+
+| Question | Meaning |
+|---|---|
+| How do we split the work? | Decomposition |
+| How do we run the pieces? | Execution topology: sequential, parallel, or mixed |
+
+Subagents are one way to execute a decomposition. They are not the decomposition itself.
+
+**Two exam patterns:**
 
 | Pattern | When to use | How it works |
 |---|---|---|
@@ -511,6 +539,8 @@ Step 5: Prioritized report
 
 Why split? Reviewing 14 files together causes **attention dilution** — the model gives inconsistent depth across files and may produce contradictory feedback (flagging a pattern as bad in one file while approving the same pattern in another).
 
+This pattern maps directly to the exam guide's example of per-file local analysis followed by a separate cross-file integration pass.
+
 **Dynamic decomposition for open-ended tasks:**
 
 ```python
@@ -522,7 +552,15 @@ Why split? Reviewing 14 files together causes **attention dilution** — the mod
 # (each step informs the next)
 ```
 
-**Doc link:** https://code.claude.com/docs/en/agent-sdk/agent-loop
+This matches the exam guide's wording: first map structure, then identify high-impact areas, then create a plan that adapts as dependencies emerge.
+
+**How this maps to multi-agent systems:** A coordinator may decompose a problem into source collection, document analysis, and synthesis. Once that decomposition is clear, independent chunks can run in parallel via subagents. If gaps remain, the coordinator adapts the plan and creates targeted follow-up subtasks.
+
+**Doc links:**
+- https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts
+- https://code.claude.com/docs/en/agent-sdk/subagents
+- https://code.claude.com/docs/en/best-practices
+- https://code.claude.com/docs/en/context-window
 
 ---
 
