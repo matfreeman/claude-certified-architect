@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import type { QuizAttempt, QuizMode, QuizNavContext, QuizState, Screen } from './types'
 import {
   COVERAGE_ROWS,
@@ -21,6 +21,66 @@ import LessonViewer from './components/LessonViewer'
 import ExerciseViewer from './components/ExerciseViewer'
 import Readiness from './components/Readiness'
 
+const COURSE_PROGRESS_STORAGE_KEY = 'cca.study.progress.v1'
+const LEGACY_COMPLETED_LESSONS_KEY = 'completedLessons'
+const LEGACY_COMPLETED_EXERCISES_KEY = 'completedExercises'
+const LEGACY_QUIZ_ATTEMPTS_KEY = 'quizAttempts'
+
+interface StoredCourseProgress {
+  completedLessons: string[]
+  completedExercises: string[]
+  quizAttempts: QuizAttempt[]
+}
+
+function readStoredJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function dedupeStrings(values: string[]): string[] {
+  return [...new Set(values)]
+}
+
+function mergeAttempts(...attemptGroups: QuizAttempt[][]): QuizAttempt[] {
+  const merged = new Map<string, QuizAttempt>()
+  for (const group of attemptGroups) {
+    for (const attempt of group) {
+      merged.set(attempt.id, attempt)
+    }
+  }
+  return [...merged.values()].sort((a, b) => b.completedAt - a.completedAt).slice(0, 50)
+}
+
+function loadCourseProgress(): StoredCourseProgress {
+  const stored = readStoredJson<StoredCourseProgress | null>(COURSE_PROGRESS_STORAGE_KEY, null)
+  const legacyLessons = readStoredJson<string[]>(LEGACY_COMPLETED_LESSONS_KEY, [])
+  const legacyExercises = readStoredJson<string[]>(LEGACY_COMPLETED_EXERCISES_KEY, [])
+  const legacyAttempts = readStoredJson<QuizAttempt[]>(LEGACY_QUIZ_ATTEMPTS_KEY, [])
+
+  return {
+    completedLessons: dedupeStrings([...(stored?.completedLessons ?? []), ...legacyLessons]),
+    completedExercises: dedupeStrings([...(stored?.completedExercises ?? []), ...legacyExercises]),
+    quizAttempts: mergeAttempts(stored?.quizAttempts ?? [], legacyAttempts),
+  }
+}
+
+function persistCourseProgress(progress: StoredCourseProgress) {
+  const snapshot: StoredCourseProgress = {
+    completedLessons: dedupeStrings(progress.completedLessons),
+    completedExercises: dedupeStrings(progress.completedExercises),
+    quizAttempts: mergeAttempts(progress.quizAttempts),
+  }
+
+  localStorage.setItem(COURSE_PROGRESS_STORAGE_KEY, JSON.stringify(snapshot))
+  localStorage.setItem(LEGACY_COMPLETED_LESSONS_KEY, JSON.stringify(snapshot.completedLessons))
+  localStorage.setItem(LEGACY_COMPLETED_EXERCISES_KEY, JSON.stringify(snapshot.completedExercises))
+  localStorage.setItem(LEGACY_QUIZ_ATTEMPTS_KEY, JSON.stringify(snapshot.quizAttempts))
+}
+
 function useTheme() {
   const [dark, setDark] = useState(() => {
     const stored = localStorage.getItem('theme')
@@ -36,48 +96,38 @@ function useTheme() {
 }
 
 function useCourseProgress() {
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('completedLessons')
-      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
-    } catch {
-      return new Set()
-    }
-  })
+  const [progress, setProgress] = useState<StoredCourseProgress>(() => loadCourseProgress())
 
-  const [completedExercises, setCompletedExercises] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('completedExercises')
-      return stored ? new Set(JSON.parse(stored) as string[]) : new Set()
-    } catch {
-      return new Set()
-    }
-  })
+  useEffect(() => {
+    persistCourseProgress(progress)
+  }, [progress])
 
-  const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>(() => {
-    try {
-      const stored = localStorage.getItem('quizAttempts')
-      return stored ? (JSON.parse(stored) as QuizAttempt[]) : []
-    } catch {
-      return []
-    }
-  })
+  const completedLessons = useMemo(
+    () => new Set(progress.completedLessons),
+    [progress.completedLessons],
+  )
+  const completedExercises = useMemo(
+    () => new Set(progress.completedExercises),
+    [progress.completedExercises],
+  )
 
   const markLessonComplete = useCallback((slug: string) => {
-    setCompletedLessons((prev) => {
-      const next = new Set(prev)
-      next.add(slug)
-      localStorage.setItem('completedLessons', JSON.stringify([...next]))
-      return next
+    setProgress((prev) => {
+      if (prev.completedLessons.includes(slug)) return prev
+      return {
+        ...prev,
+        completedLessons: [...prev.completedLessons, slug],
+      }
     })
   }, [])
 
   const markExerciseComplete = useCallback((slug: string) => {
-    setCompletedExercises((prev) => {
-      const next = new Set(prev)
-      next.add(slug)
-      localStorage.setItem('completedExercises', JSON.stringify([...next]))
-      return next
+    setProgress((prev) => {
+      if (prev.completedExercises.includes(slug)) return prev
+      return {
+        ...prev,
+        completedExercises: [...prev.completedExercises, slug],
+      }
     })
   }, [])
 
@@ -97,17 +147,19 @@ function useCourseProgress() {
       passed: summary.passed,
     }
 
-    setQuizAttempts((prev) => {
-      const next = [attempt, ...prev].slice(0, 50)
-      localStorage.setItem('quizAttempts', JSON.stringify(next))
-      return next
+    setProgress((prev) => {
+      const nextAttempts = [attempt, ...prev.quizAttempts].slice(0, 50)
+      return {
+        ...prev,
+        quizAttempts: nextAttempts,
+      }
     })
   }, [])
 
   return {
     completedLessons,
     completedExercises,
-    quizAttempts,
+    quizAttempts: progress.quizAttempts,
     markLessonComplete,
     markExerciseComplete,
     recordAttempt,
@@ -262,6 +314,10 @@ export default function App() {
 
   const currentLesson = currentLessonSlug ? getLessonBySlug(currentLessonSlug) : null
   const currentExercise = currentExerciseSlug ? getExerciseBySlug(currentExerciseSlug) : null
+  const lessonMicroQuizQuestions = useMemo(
+    () => (currentLesson ? getMicroQuizQuestions(currentLesson.taskStatement) : []),
+    [currentLesson?.slug, currentLesson?.taskStatement],
+  )
 
   const onLessonScreen = screen === 'lesson' || screen === 'exercise'
   const onQuizScreen = screen === 'quiz' || screen === 'results'
@@ -338,7 +394,7 @@ export default function App() {
         <LessonViewer
           lesson={currentLesson}
           allLessons={LESSONS}
-          microQuizQuestions={getMicroQuizQuestions(currentLesson.taskStatement)}
+          microQuizQuestions={lessonMicroQuizQuestions}
           completedLessons={completedLessons}
           onComplete={markLessonComplete}
           onNavigate={openLesson}

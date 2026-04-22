@@ -206,28 +206,27 @@ function ExamTips({
 
 function MicroQuiz({
   questions,
-  onAllAnswered,
+  onCompletionChange,
 }: {
   questions: Question[]
-  onAllAnswered: () => void
+  onCompletionChange: (done: boolean) => void
 }) {
   const [answers, setAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({})
   const [revealed, setRevealed] = useState<Record<string, boolean>>({})
+
+  const allDone = questions.length > 0 && questions.every((question) => Boolean(revealed[question.id]))
+
+  useEffect(() => {
+    onCompletionChange(allDone)
+  }, [allDone, onCompletionChange])
 
   if (questions.length === 0) return null
 
   function handleAnswer(qId: string, letter: 'A' | 'B' | 'C' | 'D') {
     if (revealed[qId]) return
-    const nextAnswers = { ...answers, [qId]: letter }
-    const nextRevealed = { ...revealed, [qId]: true }
-    setAnswers(nextAnswers)
-    setRevealed(nextRevealed)
-    if (Object.keys(nextRevealed).length === questions.length) {
-      setTimeout(onAllAnswered, 600)
-    }
+    setAnswers((prev) => ({ ...prev, [qId]: letter }))
+    setRevealed((prev) => ({ ...prev, [qId]: true }))
   }
-
-  const allDone = Object.keys(revealed).length === questions.length
 
   return (
     <div className="micro-quiz">
@@ -460,7 +459,7 @@ export default function LessonViewer({
 
         {/* Micro-quiz */}
         {showQuiz && (
-          <MicroQuiz questions={microQuizQuestions} onAllAnswered={() => setQuizDone(true)} />
+          <MicroQuiz questions={microQuizQuestions} onCompletionChange={setQuizDone} />
         )}
 
         {/* Lesson footer: complete + nav */}

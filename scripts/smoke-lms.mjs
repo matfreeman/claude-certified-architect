@@ -17,6 +17,7 @@ const lessonSlugs = fs
   .map((file) => file.replace(/\.md$/, ''))
 
 const foundationSlug = lessonSlugs.find((slug) => slug === '00-foundations')
+const progressStorageKey = 'cca.study.progress.v1'
 const chromePath =
   process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
@@ -155,6 +156,11 @@ async function clickButton(client, pattern, index = 0) {
 
 async function setCourseState(client, { completedLessons = [], completedExercises = [], quizAttempts = [] }) {
   await client.evaluate(`(() => {
+    localStorage.setItem(${JSON.stringify(progressStorageKey)}, JSON.stringify({
+      completedLessons: ${JSON.stringify(completedLessons)},
+      completedExercises: ${JSON.stringify(completedExercises)},
+      quizAttempts: ${JSON.stringify(quizAttempts)},
+    }))
     localStorage.setItem('completedLessons', JSON.stringify(${JSON.stringify(completedLessons)}))
     localStorage.setItem('completedExercises', JSON.stringify(${JSON.stringify(completedExercises)}))
     localStorage.setItem('quizAttempts', JSON.stringify(${JSON.stringify(quizAttempts)}))
@@ -191,6 +197,32 @@ async function run() {
     assert(lessonText.includes('The Agentic Loop Lifecycle'), 'Foundations next action should open Domain 1 lesson 1.1')
     assert(/where this sits in the stack/i.test(lessonText), 'Lesson pages should explain stack context')
     assert(lessonText.includes('Agent SDK'), 'The agent loop lesson should be tagged to the Agent SDK layer')
+    await client.evaluate(`(() => {
+      for (const block of document.querySelectorAll('.micro-q')) {
+        block.querySelector('button:not([disabled])')?.click()
+      }
+      return true
+    })()`)
+    await waitFor(
+      async () =>
+        client.evaluate(`(() => /mark lesson complete/i.test(document.body.innerText))()`),
+      'lesson completion unlock',
+    )
+    await clickButton(client, '/Mark lesson complete/i')
+    const storedProgress = await client.evaluate(
+      `(() => JSON.parse(localStorage.getItem(${JSON.stringify(progressStorageKey)}) || '{}'))()`,
+    )
+    assert(
+      storedProgress.completedLessons?.includes('1.1-agentic-loop'),
+      'Marking a lesson complete should persist it in durable course progress storage',
+    )
+    await client.navigate('http://127.0.0.1:4173/')
+    await clickButton(client, '/Start learning|Continue studying/i')
+    let postCompleteStudyText = await client.evaluate('document.body.innerText')
+    assert(
+      !postCompleteStudyText.includes('0 of 41 milestones complete'),
+      'Completed lessons should still be counted after a full app reload',
+    )
 
     await client.navigate('http://127.0.0.1:4173/')
     await setCourseState(client, {
