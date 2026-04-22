@@ -10,6 +10,7 @@ deliverables:
   - "At least 2 path-scoped rule files"
   - "One project skill or slash command"
   - "An MCP config split between shared and personal scope"
+  - "A short note on whether the chosen MCP server exposes tools, resources, prompts, or some combination"
 concepts: [CLAUDE.md hierarchy, path rules, skills, MCP configuration, plan mode]
 docLinks:
   - text: "Memory and CLAUDE.md"
@@ -18,6 +19,12 @@ docLinks:
     url: "https://code.claude.com/docs/en/skills"
   - text: "MCP in Claude Code"
     url: "https://code.claude.com/docs/en/mcp"
+  - text: "MCP architecture overview"
+    url: "https://modelcontextprotocol.io/docs/learn/architecture"
+  - text: "Understanding MCP servers"
+    url: "https://modelcontextprotocol.io/docs/learn/server-concepts"
+  - text: "MCP Inspector"
+    url: "https://modelcontextprotocol.io/docs/tools/inspector"
 completionMode: "self_attest"
 ---
 
@@ -45,13 +52,16 @@ Create a small project structure that includes:
 3. Create a skill with `context: fork` and explicit `allowed-tools`.
 4. Configure one shared MCP server in `.mcp.json`.
 5. Document one personal-only server or override in `~/.claude.json`.
-6. Try at least three tasks and decide whether each should use direct execution or plan mode.
+6. Inspect the chosen MCP server and record whether it exposes tools, resources, prompts, or some combination.
+7. For one common team workflow, decide whether a resource or prompt would be better than adding another tool.
+8. Try at least three tasks and decide whether each should use direct execution or plan mode.
 
 ## Deliverables
 
 - Final folder structure
 - Example rule frontmatter with glob paths
 - Skill frontmatter showing isolation and tool restrictions
+- A short MCP capability note: tools vs resources vs prompts for the chosen server
 - A short decision log explaining when you chose plan mode vs direct execution
 
 ## Self-review checklist
@@ -60,6 +70,7 @@ Create a small project structure that includes:
 - Are path-specific rules solving a real token or relevance problem?
 - Does the skill use `context: fork` only when isolation is actually valuable?
 - Is the MCP split clear between shared and personal configuration?
+- Did you identify the right MCP primitive for the workflow instead of treating every integration need as a tool?
 - Could another developer clone the repo and benefit from the setup immediately?
 
 ## Related domains

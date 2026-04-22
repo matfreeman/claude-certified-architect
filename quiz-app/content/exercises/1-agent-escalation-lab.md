@@ -14,6 +14,8 @@ concepts: [agentic loop, hooks, structured errors, escalation, tool design]
 docLinks:
   - text: "Tool use overview"
     url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+  - text: "MCP tools spec"
+    url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools"
   - text: "Hooks guide"
     url: "https://code.claude.com/docs/en/agent-sdk/hooks"
   - text: "Handling stop reasons"

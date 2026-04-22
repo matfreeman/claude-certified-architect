@@ -26,21 +26,21 @@ questions:
       layer (C) is over-engineered and bypasses the LLM's natural language understanding.
       Consolidating tools (D) is valid but requires more effort than a "first step" warrants.
     docLink:
-      text: "Tool interface design"
-      url: "https://modelcontextprotocol.io/introduction"
+      text: "Define tools"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
     optionLinks:
       A:
         text: "Few-shot examples for tool selection"
         url: "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
       B:
         text: "Writing effective tool descriptions"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
       C:
         text: "Routing classifiers and pre-selection"
-        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
       D:
         text: "Tool consolidation patterns"
-        url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
 
   - id: d2_iserror
     taskStatement: "2.2"
@@ -62,17 +62,17 @@ questions:
       failures in the MCP protocol.
     docLink:
       text: "MCP error handling patterns"
-      url: "https://modelcontextprotocol.io/introduction"
+      url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
     optionLinks:
       A:
         text: "isError flag — signaling tool failures correctly"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
       B:
         text: "Automatic retry behavior in MCP"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
       C:
         text: "Custom error fields vs the isError flag"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
       D:
         text: "Escalation patterns for tool failures"
         url: "https://platform.claude.com/docs/en/build-with-claude/overview"
@@ -96,12 +96,12 @@ questions:
       their role. Even with perfect descriptions (A) and good few-shot examples (D), too many
       choices remain problematic. Preference instructions (C) are probabilistic, not structural.
     docLink:
-      text: "Tool distribution across agents"
-      url: "https://modelcontextprotocol.io/introduction"
+      text: "Tool use overview"
+      url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
     optionLinks:
       A:
         text: "Writing effective tool descriptions"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
       B:
         text: "Scoped tool access — least privilege for agents"
         url: "https://code.claude.com/docs/en/agent-sdk/overview"
@@ -237,17 +237,17 @@ questions:
       Throwing exceptions (D) propagates to the coordinator unnecessarily.
     docLink:
       text: "MCP structured error responses"
-      url: "https://modelcontextprotocol.io/introduction"
+      url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
     optionLinks:
       A:
         text: "Transient errors and isRetryable flag"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
       B:
         text: "Business errors — errorCategory in MCP"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
       C:
         text: "Generic vs structured error messages"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
       D:
         text: "Exception propagation in agent architectures"
         url: "https://code.claude.com/docs/en/agent-sdk/overview"
@@ -279,14 +279,14 @@ questions:
       address the fundamental need for the agent to discover the data structure.
     docLink:
       text: "MCP resources and content catalogs"
-      url: "https://code.claude.com/docs/en/mcp"
+      url: "https://modelcontextprotocol.io/docs/learn/server-concepts"
     optionLinks:
       A:
         text: "Conversation context caching"
         url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
       B:
         text: "MCP resources — exposing content catalogs"
-        url: "https://code.claude.com/docs/en/mcp"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/resources"
       C:
         text: "Tool consolidation patterns"
         url: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
@@ -538,3 +538,223 @@ questions:
       D:
         text: "MCP tools spec — use `isError` to distinguish failures from normal results"
         url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools#error-handling"
+
+  - id: d2_mcp_architecture_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "2.4"
+    question: |
+      A teammate says, "Claude Code connects directly to our GitHub MCP server, so the
+      server is effectively the MCP client and can talk to the model however it wants."
+      Which explanation is most accurate?
+    options:
+      A: "Claude Code is the MCP host. It creates an MCP client for each connected server, and the server exposes capabilities through that client connection rather than talking directly to the model."
+      B: "The GitHub MCP server is both the host and the client because it exposes tools that Claude can call."
+      C: "The model itself is the MCP client, so the host and client are interchangeable terms."
+      D: "Each MCP server becomes the host for its own tools after connection, so there is no meaningful client layer."
+    correct: A
+    explanation: |
+      The official MCP architecture distinguishes the host, client, and server. The
+      host is the user-facing AI application, such as Claude Code. It creates one MCP
+      client per MCP server connection. The server exposes capabilities over the
+      protocol, but it does not become the host and it does not talk directly to the
+      model outside the host-client-server relationship.
+    docLink:
+      text: "MCP architecture overview"
+      url: "https://modelcontextprotocol.io/docs/learn/architecture"
+    optionLinks:
+      A:
+        text: "Host, client, and server roles"
+        url: "https://modelcontextprotocol.io/docs/learn/architecture"
+      B:
+        text: "Understanding MCP servers"
+        url: "https://modelcontextprotocol.io/docs/learn/server-concepts"
+      C:
+        text: "Understanding MCP clients"
+        url: "https://modelcontextprotocol.io/docs/learn/client-concepts"
+      D:
+        text: "Architecture participants"
+        url: "https://modelcontextprotocol.io/docs/learn/architecture"
+
+  - id: d2_primitives_mapping_01
+    scenario: "Claude Code for Continuous Integration"
+    taskStatement: "2.4"
+    question: |
+      You want an MCP integration for release management with three needs:
+      1) show the current release checklist and open blockers without extra exploratory calls,
+      2) let Claude create a release note draft in your tracker,
+      3) give users a reusable "prepare release" workflow they can invoke explicitly.
+      Which mapping best fits MCP's primitives?
+    options:
+      A: "Use tools for all three so the model can decide everything automatically."
+      B: "Use a resource for the checklist/blocker catalog, a tool for creating the release note draft, and a prompt for the reusable prepare-release workflow."
+      C: "Use prompts for the checklist and blockers, resources for the draft action, and a tool only for the reusable workflow."
+      D: "Use resources for all three so the host can surface them uniformly."
+    correct: B
+    explanation: |
+      MCP's primitives have different controllers and jobs. Resources are application-driven
+      context and are a strong fit for stable catalogs like release checklists or blocker
+      summaries. Tools are model-controlled actions and fit the draft-creation operation.
+      Prompts are user-controlled reusable templates, which makes them the right fit for
+      an explicit prepare-release workflow.
+    docLink:
+      text: "Understanding MCP servers"
+      url: "https://modelcontextprotocol.io/docs/learn/server-concepts"
+    optionLinks:
+      A:
+        text: "Tools are model-controlled actions"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/tools"
+      B:
+        text: "Tools, resources, and prompts together"
+        url: "https://modelcontextprotocol.io/docs/learn/server-concepts"
+      C:
+        text: "Prompts are user-controlled"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/prompts"
+      D:
+        text: "Resources are contextual, not action-taking"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/resources"
+
+  - id: d2_roots_boundary_01
+    scenario: "Code Generation with Claude Code"
+    taskStatement: "2.4"
+    question: |
+      You connect a filesystem-oriented MCP server to help with project work and expose
+      `file:///Users/dev/project` as a root. A teammate argues this is enough security
+      because the root prevents the server from touching anything else on the machine.
+      What is the best response?
+    options:
+      A: "Correct. Roots are the primary filesystem security mechanism in MCP and should be treated as hard enforcement boundaries."
+      B: "Mostly correct. Roots are advisory for browsing but become hard security boundaries once the server supports resources."
+      C: "Incorrect. Roots are coordination hints that help trusted servers stay in scope; real protection still comes from OS permissions, sandboxing, and user trust."
+      D: "Incorrect only for remote servers. For local stdio servers, roots are mandatory security enforcement."
+    correct: C
+    explanation: |
+      The official MCP client concepts and roots docs are explicit that roots are a
+      coordination mechanism, not a hard security boundary. They help well-behaved,
+      trusted servers understand what is in scope, but they do not replace operating
+      system permissions, sandboxing, or other real security controls.
+    docLink:
+      text: "Understanding MCP clients"
+      url: "https://modelcontextprotocol.io/docs/learn/client-concepts"
+    optionLinks:
+      A:
+        text: "Roots specification"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/client/roots"
+      B:
+        text: "Roots design philosophy"
+        url: "https://modelcontextprotocol.io/docs/learn/client-concepts"
+      C:
+        text: "Roots are coordination, not security"
+        url: "https://modelcontextprotocol.io/docs/learn/client-concepts"
+      D:
+        text: "Client roots capability"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/client/roots"
+
+  - id: d2_inspector_debugging_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "2.4"
+    question: |
+      You built a new local MCP server and added it to configuration, but Claude does
+      not appear to surface any of its capabilities. Before rewriting prompts or
+      changing tool descriptions, what is the best first debugging step?
+    options:
+      A: "Open the server with MCP Inspector, verify connectivity, and inspect the initialize exchange and advertised capabilities."
+      B: "Add several prompt examples to teach Claude how to discover the missing capabilities."
+      C: "Convert the server from stdio to Streamable HTTP because local transports do not support capability negotiation."
+      D: "Wrap every server response in a prompt template so Claude sees the tools as prompts instead."
+    correct: A
+    explanation: |
+      The official MCP debugging guidance recommends Inspector as the first stop. It
+      lets you validate connectivity, inspect tools/resources/prompts, and verify the
+      initialize exchange and negotiated capabilities. If the server is not exposing
+      what you expect, fix the protocol connection first rather than compensating with
+      prompt changes.
+    docLink:
+      text: "Debugging MCP integrations"
+      url: "https://modelcontextprotocol.io/docs/tools/debugging"
+    optionLinks:
+      A:
+        text: "MCP Inspector"
+        url: "https://modelcontextprotocol.io/docs/tools/inspector"
+      B:
+        text: "Debugging guide"
+        url: "https://modelcontextprotocol.io/docs/tools/debugging"
+      C:
+        text: "MCP transports"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/basic/transports"
+      D:
+        text: "Prompts specification"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/server/prompts"
+
+  - id: d2_remote_auth_01
+    scenario: "Customer Support Resolution Agent"
+    taskStatement: "2.4"
+    question: |
+      You are moving an internal customer-records MCP server from a developer laptop to
+      a remote Streamable HTTP deployment so several teams can use it. The server reads
+      user-specific customer data and performs high-impact account actions. What is the
+      best security posture?
+    options:
+      A: "Keep the local stdio authentication pattern and rely on roots to limit what the remote server can access."
+      B: "Expose the remote server publicly without auth first, then add prompt-based approval instructions for sensitive actions."
+      C: "Implement authorization for the remote HTTP server, following the OAuth-based MCP authorization model, while keeping in mind that local stdio setups usually rely on environment-based or embedded credentials instead."
+      D: "Pass each user's upstream bearer token through the MCP server directly to downstream APIs to preserve identity without added complexity."
+    correct: C
+    explanation: |
+      For remote HTTP-based MCP servers that expose sensitive, user-specific data or
+      high-impact actions, authorization is strongly recommended. The official MCP
+      authorization docs center on OAuth-style flows for remote servers. Local stdio
+      servers are a different case and usually rely on environment-based or embedded
+      credentials. Token passthrough is an anti-pattern called out by the official
+      security guidance.
+    docLink:
+      text: "Understanding authorization in MCP"
+      url: "https://modelcontextprotocol.io/docs/tutorials/security/authorization"
+    optionLinks:
+      A:
+        text: "Roots are not a security boundary"
+        url: "https://modelcontextprotocol.io/docs/learn/client-concepts"
+      B:
+        text: "Authorization tutorial"
+        url: "https://modelcontextprotocol.io/docs/tutorials/security/authorization"
+      C:
+        text: "Authorization specification"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization"
+      D:
+        text: "Security best practices"
+        url: "https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices"
+
+  - id: d2_transport_choice_01
+    scenario: "Developer Productivity with Claude"
+    taskStatement: "2.4"
+    question: |
+      Your team has two MCP integrations to design:
+      1) a local filesystem helper that runs on the same developer machine as Claude Code,
+      2) a shared analytics service hosted centrally for many users.
+      Which transport pairing is most appropriate?
+    options:
+      A: "Use Streamable HTTP for the local helper and stdio for the shared analytics service so both can stream."
+      B: "Use stdio for the local helper and Streamable HTTP for the shared analytics service."
+      C: "Use stdio for both because MCP transport choice does not affect deployment or authentication."
+      D: "Use Streamable HTTP for both because stdio cannot expose tools, resources, and prompts."
+    correct: B
+    explanation: |
+      The official MCP architecture describes stdio as the natural fit for direct
+      local process communication on the same machine, while Streamable HTTP is the
+      remote transport for networked services and multi-client deployments. Transport
+      choice affects connection model, deployment, and security posture.
+    docLink:
+      text: "MCP architecture overview"
+      url: "https://modelcontextprotocol.io/docs/learn/architecture"
+    optionLinks:
+      A:
+        text: "Transport concepts"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/basic/transports"
+      B:
+        text: "STDIO vs Streamable HTTP"
+        url: "https://modelcontextprotocol.io/docs/learn/architecture"
+      C:
+        text: "Authorization and transports"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization"
+      D:
+        text: "Server primitives over MCP transports"
+        url: "https://modelcontextprotocol.io/specification/2025-11-25/basic"

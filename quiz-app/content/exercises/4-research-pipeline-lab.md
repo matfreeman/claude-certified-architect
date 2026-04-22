@@ -10,12 +10,15 @@ deliverables:
   - "Parallel subagent execution plan"
   - "Structured subagent outputs with provenance fields"
   - "An error propagation strategy with partial-result handling"
-concepts: [subagents, explicit context passing, tool distribution, error propagation, provenance]
+  - "A note on where an MCP resource or prompt would reduce repeated exploration"
+concepts: [subagents, explicit context passing, tool distribution, error propagation, provenance, MCP resources]
 docLinks:
   - text: "Subagents"
     url: "https://code.claude.com/docs/en/agent-sdk/subagents"
-  - text: "MCP introduction"
-    url: "https://modelcontextprotocol.io/introduction"
+  - text: "MCP architecture overview"
+    url: "https://modelcontextprotocol.io/docs/learn/architecture"
+  - text: "Understanding MCP servers"
+    url: "https://modelcontextprotocol.io/docs/learn/server-concepts"
   - text: "Context windows"
     url: "https://platform.claude.com/docs/en/build-with-claude/context-windows"
 completionMode: "self_attest"
@@ -44,20 +47,23 @@ Use a multi-source research question such as:
 3. Restrict tool access by role so each subagent has the smallest useful set.
 4. Have the coordinator emit multiple subagent calls in parallel where possible.
 5. Require subagents to return structured outputs that include claim, evidence, source, and publication date.
-6. Simulate a failure in one subagent and decide whether the coordinator should retry, proceed with partial results, or stop.
-7. Render the final output so confirmed findings, conflicts, and gaps are visible.
+6. Decide whether one repeated discovery step should instead be surfaced as an MCP resource catalog or a reusable prompt.
+7. Simulate a failure in one subagent and decide whether the coordinator should retry, proceed with partial results, or stop.
+8. Render the final output so confirmed findings, conflicts, and gaps are visible.
 
 ## Deliverables
 
 - Coordinator brief
 - Subagent definitions and tool scopes
 - Structured output shape for findings
+- Resource-or-prompt design note for one repeated workflow
 - Example final report format showing attribution and coverage gaps
 
 ## Self-review checklist
 
 - Does every subagent receive the context it needs explicitly?
 - Are parallel calls used only where tasks are truly independent?
+- Would a resource or prompt reduce repeated exploratory tool calls anywhere in the design?
 - Can the coordinator make recovery decisions from the error payload alone?
 - Is provenance preserved through synthesis rather than flattened away?
 - Does the final report expose uncertainty instead of smoothing it over?

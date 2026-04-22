@@ -216,7 +216,7 @@ questions:
         url: "https://code.claude.com/docs/en/agent-sdk/overview"
       C:
         text: "MCP tool interface contracts"
-        url: "https://modelcontextprotocol.io/introduction"
+        url: "https://modelcontextprotocol.io/docs/learn/server-concepts"
       D:
         text: "Normalization tool design"
         url: "https://platform.claude.com/docs/en/build-with-claude/tool-use"

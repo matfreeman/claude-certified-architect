@@ -906,12 +906,134 @@ The synthesis agent handles 85% of fact verifications itself (simple, fast). The
 
 ### 2.4 MCP Server Integration
 
-**MCP scoping:**
+This is the part of Domain 2 that is easy to under-study if you only think about
+`.mcp.json`. The current official MCP docs support a much broader mental model:
+architecture, transports, primitives, client features, debugging, and auth — then
+Claude Code adds its own configuration surface on top.
+
+#### MCP mental model
+
+MCP is an open protocol for connecting AI applications to external systems. It
+standardizes context exchange; it does **not** dictate your orchestration, prompts,
+or UX.
+
+**Participants:**
+
+| Role | Meaning |
+|---|---|
+| Host | The user-facing AI application, such as Claude Code or Claude Desktop |
+| Client | The protocol component the host creates to manage one MCP server connection |
+| Server | The program that exposes capabilities over MCP |
+
+**Exam trap:** a server is not “a tool.” A server may expose many tools, resources,
+and prompts, and the host may connect to multiple servers at once by creating multiple
+clients.
+
+#### Two MCP layers
+
+| Layer | What it handles |
+|---|---|
+| Data layer | JSON-RPC messages, lifecycle, capabilities, tools, resources, prompts, notifications |
+| Transport layer | Connection mechanism, framing, remote auth, streaming |
+
+The official versioning page currently lists `2025-11-25` as the current protocol
+version. You do not need to memorize every revision, but you do need to understand
+that protocol version negotiation happens during initialization.
+
+#### Connection lifecycle and capability negotiation
+
+MCP is stateful. A session begins with `initialize`, where the two sides negotiate:
+
+- protocol version
+- supported capabilities
+- optional features like list-changed notifications
+
+If a feature is missing, first check whether the capability was actually advertised.
+If two peers cannot agree on a compatible protocol version, the session should not
+continue.
+
+This matters in debugging scenarios: if a server sends sampling or elicitation
+requests to a client that never declared those capabilities, the problem is capability
+negotiation, not prompt wording.
+
+#### Transports: local vs remote
+
+The official docs frame transport choice as:
+
+| Transport | Best fit |
+|---|---|
+| `stdio` | Local servers running on the same machine |
+| Streamable HTTP | Remote, networked servers |
+
+Modern MCP guidance centers on **Streamable HTTP** rather than thinking in terms of
+“HTTP plus SSE” as if those were separate top-level transport choices. Streamable HTTP
+may use SSE for streaming, but the exam-level choice is still basically local `stdio`
+vs remote Streamable HTTP.
+
+#### The three server primitives
+
+| Primitive | What it is | Who controls it |
+|---|---|---|
+| Tools | Executable actions | Model |
+| Resources | Context data and catalogs | Application |
+| Prompts | Reusable templates | User |
+
+**Tools:** schema-defined operations that the model can invoke automatically. Use
+tools for actions and focused queries.
+
+**Resources:** URI-identified context surfaces that hosts can browse, search, or
+pre-include. Use resources for catalogs, schemas, documentation trees, and other
+stable context.
+
+**Prompts:** reusable, user-invoked templates, often surfaced like slash commands.
+Use prompts for explicit workflows, not as deterministic controls.
+
+#### Resources vs tools — the exam version
+
+- Need to **take action** -> tool
+- Need to **expose stable context or a catalog** -> resource
+- Need a **user-invoked reusable workflow** -> prompt
+
+This is one of the most useful elimination heuristics on Domain 2 questions.
+
+```
+# Resource: expose available data up front
+resource: issue_catalog
+  → Returns: current sprint issues with summaries
+  → Benefit: agent sees the landscape without exploratory tool calls
+
+# Tool: fetch or act on demand
+tool: get_issue_detail
+  → Input: issue_id
+  → Returns: full issue details
+```
+
+#### Client-side MCP features learners often miss
+
+The official client concepts docs also matter:
+
+- **Roots** — filesystem scope hints communicated from client to server
+- **Sampling** — server-initiated model calls routed through the client
+- **Elicitation** — schema-driven user input requests routed through the client
+
+The big exam nuance: **roots are not a hard security boundary**. They are a
+coordination mechanism that helps trusted servers stay in scope. Real security still
+comes from OS permissions, sandboxing, and user trust.
+
+#### Claude Code scoping
+
+Claude Code adds practical configuration scopes on top of MCP:
 
 | Scope | Location | Shared via version control? | Use for |
 |---|---|---|---|
-| Project (shared team) | `.mcp.json` in project root | Yes | Team tooling (GitHub, Jira, databases) |
-| User (personal) | `~/.claude.json` | No | Personal/experimental servers |
+| Project (shared team) | `.mcp.json` in project root | Yes | Team tooling |
+| Local (private, current project) | `~/.claude.json` under the current project path | No | Personal project-specific experiments |
+| User (private, all projects) | `~/.claude.json` | No | Personal cross-project tools |
+
+For exam purposes, the quick rule is:
+
+- shared config -> `.mcp.json`
+- private config -> `~/.claude.json`
 
 **Project `.mcp.json` with environment variable expansion:**
 ```json
@@ -923,58 +1045,89 @@ The synthesis agent handles 85% of fact verifications itself (simple, fast). The
       "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
-    },
-    "database": {
-      "command": "python",
-      "args": ["-m", "mcp_server_db"],
-      "env": {
-        "DB_CONNECTION_STRING": "${DB_CONNECTION_STRING}"
-      }
     }
   }
 }
 ```
 
-Never commit secrets directly. Always use `${ENV_VAR}` syntax so each developer provides their own credentials via environment variables.
+Never commit secrets directly. Use `${ENV_VAR}` or `${ENV_VAR:-default}` syntax so
+each developer provides their own credentials.
 
-**Personal server in `~/.claude.json`:**
-```json
-{
-  "mcpServers": {
-    "my-experimental-tool": {
-      "command": "node",
-      "args": ["/Users/me/dev/my-mcp-server/index.js"]
-    }
-  }
-}
-```
+**All configured MCP servers are discovered at connection time** and are available
+simultaneously in the same session.
 
-**All configured MCP servers are discovered at connection time** and available simultaneously. The agent can use tools from multiple servers in the same session.
+#### Community vs custom servers
 
-**MCP Resources vs Tools:**
-- **Tools** = executable functions (take action, query data on demand)
-- **Resources** = content catalogs (expose available data without tool calls)
-- **Naming tip:** prefer stable, descriptive, `snake_case` names for MCP resources so catalogs are predictable and easy to reference across tools, prompts, and agent outputs
-- **Official MCP nuance:** resources are application-driven. Hosts decide how to surface, search, select, or auto-include them. The protocol does not require one specific UX pattern.
-- **Protocol concept to know:** resources are identified by URIs and are discovered separately from tools.
+Prefer a community server when the integration is standard and well-served already
+(GitHub, Jira, Slack, etc.). Build a custom server when you need internal-system
+integration, constrained behavior, or company-specific workflow logic.
 
-```
-# Resource: expose what's available upfront
-resource: issue_catalog
-  → Returns: list of open issues with summaries
-  → Benefit: Agent sees available data without exploratory tool calls
+#### Why Claude sometimes ignores your MCP tool
 
-# Tool: fetch specific data on demand
-tool: get_issue_detail
-  → Input: issue_id
-  → Returns: full issue details
-```
+If an MCP tool has a weak or vague description, Claude may prefer built-in tools like
+`Grep` or `Read` over the MCP tool. This is an interface-design problem before it is
+an orchestration problem. Improve the tool name and description first.
 
-**Enhancing MCP tool descriptions:** If your MCP tool has a weak description, the agent will prefer built-in tools (like Grep) over the more capable MCP tool. Enhance descriptions to explain capabilities, outputs, and when to use vs alternatives.
+#### Debugging and inspection
 
-**Community vs custom servers:** Use existing community MCP servers for standard integrations (GitHub, Slack, Jira). Only build custom servers for team-specific workflows not covered by existing servers.
+The official MCP debugging guide recommends **MCP Inspector** as the first stop for
+new or broken servers. Use it to:
 
-**Doc link:** https://code.claude.com/docs/en/mcp
+- verify connectivity
+- inspect tools, resources, and prompts
+- check the initialize exchange and negotiated capabilities
+- watch notifications
+
+The official build-server guide also calls out an easy `stdio` mistake:
+
+- never write logs to stdout on `stdio` servers
+- stdout is the protocol channel
+- log to stderr instead
+
+#### Auth and trust boundaries
+
+Authorization is optional in MCP overall, but strongly recommended for remote HTTP
+servers that expose sensitive or user-specific data.
+
+The exam-level pattern is:
+
+- remote Streamable HTTP server with sensitive data -> authorization is likely required
+- local `stdio` server -> environment-based or embedded credentials are more typical
+
+Security guidance worth remembering:
+
+- token passthrough is an anti-pattern
+- roots are not a security boundary
+- local servers are code execution on the user’s machine
+- scope minimization matters
+
+#### What is likely in scope vs out of scope
+
+Likely in scope:
+
+- host/client/server model
+- tools vs resources vs prompts
+- project vs local vs user config
+- environment variable expansion
+- resources for content catalogs
+- community vs custom server choice
+- Inspector-first debugging
+- roots not being a hard security boundary
+
+Likely lower-priority or out of scope:
+
+- hosting topology
+- container orchestration
+- deep OAuth implementation details
+- registry publishing mechanics
+
+**Doc links:**
+- https://modelcontextprotocol.io/docs/learn/architecture
+- https://modelcontextprotocol.io/docs/learn/server-concepts
+- https://modelcontextprotocol.io/docs/learn/client-concepts
+- https://modelcontextprotocol.io/docs/tools/debugging
+- https://modelcontextprotocol.io/docs/tutorials/security/authorization
+- https://code.claude.com/docs/en/mcp
 
 ---
 
@@ -3916,9 +4069,16 @@ If you cannot explain each of the following without looking, you are not ready y
 | Claude Code CLI reference | https://code.claude.com/docs/en/cli-usage |
 | MCP configuration | https://code.claude.com/docs/en/mcp |
 | MCP architecture | https://modelcontextprotocol.io/docs/learn/architecture |
-| MCP tools | https://modelcontextprotocol.io/docs/concepts/tools |
-| MCP resources | https://modelcontextprotocol.io/docs/concepts/resources |
-| MCP servers | https://modelcontextprotocol.io/docs/concepts/servers |
+| MCP versioning | https://modelcontextprotocol.io/specification/versioning |
+| MCP servers | https://modelcontextprotocol.io/docs/learn/server-concepts |
+| MCP clients | https://modelcontextprotocol.io/docs/learn/client-concepts |
+| MCP tools | https://modelcontextprotocol.io/specification/2025-11-25/server/tools |
+| MCP resources | https://modelcontextprotocol.io/specification/2025-11-25/server/resources |
+| MCP prompts | https://modelcontextprotocol.io/specification/2025-11-25/server/prompts |
+| MCP Inspector | https://modelcontextprotocol.io/docs/tools/inspector |
+| MCP debugging | https://modelcontextprotocol.io/docs/tools/debugging |
+| MCP authorization | https://modelcontextprotocol.io/docs/tutorials/security/authorization |
+| MCP security best practices | https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices |
 | Anthropic Cookbook | https://github.com/anthropics/anthropic-cookbook |
 | Effective harnesses for long-running agents | https://www.anthropic.com/engineering |
 | A statistical approach to model evaluations | https://www.anthropic.com/research/statistical-approach-to-model-evals |
@@ -3930,7 +4090,7 @@ If you cannot explain each of the following without looking, you are not ready y
 | Technology | Key aspects |
 |---|---|
 | **Claude Agent SDK** | AgentDefinition, agent loops, `stop_reason`, hooks (PostToolUse), spawning subagents via Task, `allowedTools` |
-| **Model Context Protocol (MCP)** | MCP servers, tools, resources, `isError`, tool descriptions, `.mcp.json`, environment variables |
+| **Model Context Protocol (MCP)** | host/client/server model, tools, resources, prompts, `isError`, `.mcp.json`, roots, sampling, elicitation, transports, Inspector |
 | **Claude Code** | CLAUDE.md hierarchy, `.claude/rules/` with glob patterns, `.claude/commands/`, `.claude/skills/` with SKILL.md, planning mode, `/compact`, `--resume`, `fork_session` |
 | **Claude Code CLI** | `-p` / `--print`, `--append-system-prompt`, `--output-format json`, `--json-schema`, `--bare` |
 | **Claude API** | `tool_use` with JSON schemas, `tool_choice` ("auto"/"any"/forced), `stop_reason`, `max_tokens`, system prompts |
