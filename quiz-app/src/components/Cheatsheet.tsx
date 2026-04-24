@@ -17,11 +17,15 @@ const SECTIONS = [
   { id: 'distinctions', label: 'Distinctions' },
   { id: 'flows', label: 'Decision flows' },
   { id: 'distractors', label: 'Distractors' },
+  { id: 'glossary', label: 'Glossary' },
   { id: 'flashcards', label: 'Flashcards' },
+  { id: 'examday', label: 'Exam day' },
 ]
 
 export default function Cheatsheet({ domains, onHome }: Props) {
   const [active, setActive] = useState<string>('overview')
+  const [showTop, setShowTop] = useState(false)
+  const [revealAll, setRevealAll] = useState(false)
   const domainById = useMemo(() => new Map(domains.map((d) => [d.id, d])), [domains])
 
   useEffect(() => {
@@ -38,7 +42,12 @@ export default function Cheatsheet({ domains, onHome }: Props) {
       const el = document.getElementById(s.id)
       if (el) observer.observe(el)
     })
-    return () => observer.disconnect()
+    const onScroll = () => setShowTop(window.scrollY > 600)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', onScroll)
+    }
   }, [])
 
   const scrollTo = (id: string) => {
@@ -84,31 +93,40 @@ export default function Cheatsheet({ domains, onHome }: Props) {
         <section id="overview" className="cheat-section">
           <h2 className="cheat-section-title">Exam at a glance</h2>
           <div className="cheat-stat-grid">
-            <StatCard label="Pass score" value="720" suffix="/ 1000" />
-            <StatCard label="Format" value="MCQ" suffix="1 correct, 3 distractors" />
-            <StatCard label="Practice" value="60q" suffix="in 90 minutes" />
-            <StatCard label="Real exam" value="120m" suffix="observed" />
-            <StatCard label="Scenarios" value="4 of 6" suffix="per sitting" />
-            <StatCard label="Penalty" value="None" suffix="answer everything" />
+            <StatCard icon="🎯" label="Pass score" value="720" suffix="of 1000" />
+            <StatCard icon="📝" label="Format" value="MCQ" suffix="4 options · 1 correct" />
+            <StatCard icon="🧪" label="Practice set" value="60" suffix="questions · 90 min" />
+            <StatCard icon="⏱️" label="Real exam" value="120" suffix="minutes · observed" />
+            <StatCard icon="🎬" label="Scenarios" value="4 / 6" suffix="shown per sitting" />
+            <StatCard icon="✅" label="Wrong penalty" value="None" suffix="always answer all" />
           </div>
 
-          <h3 className="cheat-h3">Domain weighting</h3>
+          <h3 className="cheat-h3">
+            Domain weighting
+            <span className="cheat-h3-note">Sum = 100% · bar length is true to scale</span>
+          </h3>
           <div className="weight-bars">
             {domains.map((dom) => (
-              <div key={dom.id} className="weight-bar-row">
+              <button
+                key={dom.id}
+                type="button"
+                className="weight-bar-row"
+                onClick={() => scrollTo(`d${dom.id}`)}
+                aria-label={`Jump to Domain ${dom.id}`}
+              >
                 <div className="weight-bar-label">
-                  <span className="weight-bar-id" style={{ color: dom.color }}>D{dom.id}</span>
+                  <span className="weight-bar-id" style={{ color: dom.color, background: dom.bgColor }}>D{dom.id}</span>
                   <span className="weight-bar-name">{dom.shortName}</span>
                 </div>
                 <div className="weight-bar-track">
                   <div
                     className="weight-bar-fill"
-                    style={{ width: `${dom.weight * 3}%`, background: dom.color }}
+                    style={{ width: `${dom.weight}%`, background: dom.color }}
                   >
                     <span className="weight-bar-pct">{dom.weight}%</span>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -229,14 +247,11 @@ export default function Cheatsheet({ domains, onHome }: Props) {
             </Card>
 
             <Card title="1.2 Coordinator-subagent (hub & spoke)">
-              <div className="diagram">
-                <div className="diagram-node diagram-node-center">Coordinator</div>
-                <div className="diagram-arrows">
-                  <div className="diagram-leaf">Web Search</div>
-                  <div className="diagram-leaf">Doc Analyzer</div>
-                  <div className="diagram-leaf">Synthesizer</div>
-                </div>
-              </div>
+              <HubSpokeDiagram
+                center="Coordinator"
+                leaves={['Web Search', 'Doc Analyzer', 'Synthesizer']}
+                color={d(1).color}
+              />
               <p className="cheat-note">
                 Subagents <strong>never talk to each other</strong>. Everything routes via the coordinator.
               </p>
@@ -904,12 +919,37 @@ claude --bare -p "..." --allowedTools "Read"`}</Code>
           </div>
         </section>
 
+        {/* ─── Glossary ─────────────────────────────────────────────── */}
+        <section id="glossary" className="cheat-section">
+          <h2 className="cheat-section-title">Glossary & acronyms</h2>
+          <div className="glossary-grid">
+            {GLOSSARY.map((g) => (
+              <div key={g.term} className="glossary-card">
+                <div className="glossary-term">{g.term}</div>
+                <div className="glossary-def">{g.def}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ─── Flashcards ──────────────────────────────────────────── */}
         <section id="flashcards" className="cheat-section">
-          <h2 className="cheat-section-title">Quick flashcards</h2>
+          <div className="cheat-section-head-row">
+            <h2 className="cheat-section-title">Quick flashcards</h2>
+            <div className="cheat-section-controls">
+              <span className="cheat-count-chip">{FLASHCARDS.length} cards</span>
+              <button
+                type="button"
+                className="btn-ghost btn-ghost-sm"
+                onClick={() => setRevealAll((v) => !v)}
+              >
+                {revealAll ? 'Hide all answers' : 'Reveal all answers'}
+              </button>
+            </div>
+          </div>
           <div className="flash-grid">
             {FLASHCARDS.map(([q, a]) => (
-              <Flashcard key={q} q={q} a={a} />
+              <Flashcard key={q} q={q} a={a} forceOpen={revealAll} />
             ))}
           </div>
 
@@ -922,6 +962,50 @@ claude --bare -p "..." --allowedTools "Read"`}</Code>
             <li>Attention dilution is a quality issue, not just a capacity issue.</li>
           </ul>
         </section>
+
+        {/* ─── Exam day ────────────────────────────────────────────── */}
+        <section id="examday" className="cheat-section">
+          <h2 className="cheat-section-title">Exam-day playbook</h2>
+          <div className="cheat-grid-2">
+            <Card title="Before you start">
+              <ul className="cheat-list">
+                <li>Average <strong>60s / question</strong>; leave ~15 min for review</li>
+                <li>There's <strong>no wrong-answer penalty</strong> — answer every question</li>
+                <li>Mentally place each question into its <strong>domain</strong> first</li>
+                <li>Read the <strong>scenario header</strong> carefully — constraints hide there</li>
+              </ul>
+            </Card>
+            <Card title="Picking the right option">
+              <ol className="cheat-list cheat-list-num">
+                <li>Eliminate distractors that need <strong>non-existent features</strong></li>
+                <li>Prefer <strong>deterministic</strong> mechanisms for money/security/compliance</li>
+                <li>Watch <strong>scope</strong>: project vs user vs local; hook vs prompt</li>
+                <li>If two look correct: pick the one that treats <strong>cause</strong>, not symptom</li>
+                <li>Over-engineered solutions to simple issues are usually wrong</li>
+              </ol>
+            </Card>
+            <Card title="Red-flag words to slow down on">
+              <div className="tag-row">
+                {['always', 'never', 'all', 'only', 'cannot', 'guaranteed', 'deterministic', 'probabilistic'].map(
+                  (w) => (
+                    <span key={w} className="redflag-tag">{w}</span>
+                  ),
+                )}
+              </div>
+              <p className="cheat-note">
+                Absolutes often distinguish a hook from a prompt, or a real feature from a fabricated one.
+              </p>
+            </Card>
+            <Card title="If you're stuck">
+              <ul className="cheat-list">
+                <li>Mark & continue — fresh eyes on review catch 20% of rework</li>
+                <li>Re-read the <em>last sentence</em> of the question — the ask is usually there</li>
+                <li>Best guess beats blank — no penalty for wrong answers</li>
+                <li>Trust domain heuristics: D1=loops/agents · D2=tools/MCP · D3=Code/config · D4=prompts/schemas · D5=context/reliability</li>
+              </ul>
+            </Card>
+          </div>
+        </section>
       </main>
 
       <footer className="cheatsheet-footer">
@@ -929,6 +1013,17 @@ claude --bare -p "..." --allowedTools "Read"`}</Code>
           <button className="btn btn-secondary" onClick={onHome}>← Back to home</button>
         </div>
       </footer>
+
+      {showTop && (
+        <button
+          type="button"
+          className="back-to-top"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="Back to top"
+        >
+          ↑
+        </button>
+      )}
     </div>
   )
 }
@@ -982,12 +1077,13 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   )
 }
 
-function StatCard({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
+function StatCard({ icon, label, value, suffix }: { icon?: string; label: string; value: string; suffix?: string }) {
   return (
     <div className="cheat-stat">
+      {icon && <div className="cheat-stat-icon" aria-hidden>{icon}</div>}
+      <div className="cheat-stat-label">{label}</div>
       <div className="cheat-stat-value">{value}</div>
       {suffix && <div className="cheat-stat-suffix">{suffix}</div>}
-      <div className="cheat-stat-label">{label}</div>
     </div>
   )
 }
@@ -1021,17 +1117,56 @@ function Table({ head, rows }: { head: string[]; rows: (string | React.ReactNode
   )
 }
 
-function Flashcard({ q, a }: { q: string; a: string }) {
+function Flashcard({ q, a, forceOpen }: { q: string; a: string; forceOpen?: boolean }) {
   const [open, setOpen] = useState(false)
+  const isOpen = forceOpen || open
   return (
     <button
-      className={`flashcard ${open ? 'is-open' : ''}`}
+      className={`flashcard ${isOpen ? 'is-open' : ''}`}
       onClick={() => setOpen((o) => !o)}
       type="button"
     >
       <div className="flashcard-q">{q}</div>
-      <div className="flashcard-a">{open ? a : 'Tap to reveal →'}</div>
+      <div className="flashcard-a">{isOpen ? a : 'Tap to reveal →'}</div>
     </button>
+  )
+}
+
+function HubSpokeDiagram({
+  center,
+  leaves,
+  color,
+}: {
+  center: string
+  leaves: string[]
+  color: string
+}) {
+  return (
+    <div className="hub-diagram" style={{ ['--hub-color' as string]: color }}>
+      <svg className="hub-diagram-svg" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden>
+        {leaves.map((_, i) => {
+          const total = leaves.length
+          const x = 30 + (i * 240) / Math.max(1, total - 1)
+          return (
+            <path
+              key={i}
+              d={`M 150 38 Q ${(150 + x) / 2} 70 ${x} 95`}
+              stroke={color}
+              strokeWidth="1.5"
+              fill="none"
+              strokeDasharray="3 3"
+              opacity="0.55"
+            />
+          )
+        })}
+      </svg>
+      <div className="hub-center">{center}</div>
+      <div className="hub-leaves">
+        {leaves.map((l) => (
+          <div key={l} className="hub-leaf">{l}</div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -1070,6 +1205,23 @@ const ANTI_PATTERNS: [string, string][] = [
   ['Procedural micromanagement of subagents', 'Goal-oriented delegation with explicit quality criteria'],
   ['Sentiment-based escalation', 'Explicit escalation criteria with few-shot examples'],
   ['Aggregate accuracy alone for QA', 'Stratified sampling per document type AND field segment'],
+]
+
+const GLOSSARY: { term: string; def: string }[] = [
+  { term: 'MCP', def: 'Model Context Protocol — JSON-RPC protocol standardizing tools, resources, prompts across clients.' },
+  { term: 'Agent SDK', def: 'Python/TS library that drives the agentic loop and exposes hooks, permissions, sessions.' },
+  { term: 'CLAUDE.md', def: 'Auto-loaded project/user context file. Concatenated, not overridden. Injected after system prompt.' },
+  { term: 'Skill', def: 'Model- or user-invocable prompt + tool bundle (SKILL.md) with frontmatter (name, description, allowed-tools).' },
+  { term: 'Hook', def: 'Deterministic callback (PreToolUse / PostToolUse / PreCompact / SubagentStop / SessionStart).' },
+  { term: 'Coordinator', def: 'Top-level agent that decomposes a task and dispatches work to subagents.' },
+  { term: 'Subagent', def: 'Isolated-context agent spawned via Task/Agent tool; cannot talk to sibling subagents.' },
+  { term: 'stop_reason', def: 'API signal (tool_use / end_turn / max_tokens / stop_sequence / pause_turn) that drives the loop.' },
+  { term: 'tool_choice', def: 'Per-request tool-calling behavior: auto / any / specific / none.' },
+  { term: 'HITL', def: 'Human-in-the-loop — escalation / review before/after an automated action.' },
+  { term: 'FP / TP', def: 'False positive / true positive — key levers when tuning explicit review criteria.' },
+  { term: 'Plan mode', def: 'Claude Code mode that drafts a plan without editing, for multi-file or architectural work.' },
+  { term: 'Attention dilution', def: 'Quality degradation from too-large context; mitigated by decomposition, not bigger windows.' },
+  { term: 'Provenance', def: 'Per-claim source metadata (URL, date, excerpt, confidence) that travels with findings.' },
 ]
 
 const FLASHCARDS: [string, string][] = [
