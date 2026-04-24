@@ -8,9 +8,10 @@ interface Props {
   completedLessons: Set<string>
   onStart: (domainFilter: number | null) => void
   onStudy: () => void
+  onCheatsheet: () => void
 }
 
-export default function Home({ domains, totalQuestions, lessons, exercises, completedLessons, onStart, onStudy }: Props) {
+export default function Home({ domains, totalQuestions, lessons, exercises, completedLessons, onStart, onStudy, onCheatsheet }: Props) {
   const totalLessons = lessons.length
   const doneLessons = lessons.filter((l) => completedLessons.has(l.slug)).length
   const studyStarted = doneLessons > 0
@@ -80,6 +81,20 @@ export default function Home({ domains, totalQuestions, lessons, exercises, comp
               </p>
               <button className="btn btn-primary btn-lg" onClick={() => onStart(null)}>
                 Start full practice exam
+                <span className="btn-arrow">→</span>
+              </button>
+            </div>
+
+            {/* Cheatsheet mode */}
+            <div className="mode-card mode-card-cheat">
+              <div className="mode-card-icon">⚡</div>
+              <h2 className="mode-card-title">Visual cheatsheet</h2>
+              <p className="mode-card-desc">
+                Last-mile review: every key concept, distinction, and decision flow in one
+                scannable page. Perfect for the day before the exam.
+              </p>
+              <button className="btn btn-secondary btn-lg" onClick={onCheatsheet}>
+                Open cheatsheet
                 <span className="btn-arrow">→</span>
               </button>
             </div>

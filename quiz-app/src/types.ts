@@ -87,7 +87,7 @@ export interface Exercise extends ExerciseMeta {
   body: string
 }
 
-export type Screen = 'home' | 'learn' | 'lesson' | 'exercise' | 'readiness' | 'quiz' | 'results'
+export type Screen = 'home' | 'learn' | 'lesson' | 'exercise' | 'readiness' | 'quiz' | 'results' | 'cheatsheet'
 
 export type QuizMode = 'practice' | 'checkpoint' | 'final'
 

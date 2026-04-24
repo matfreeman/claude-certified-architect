@@ -20,6 +20,7 @@ import LearnHome from './components/LearnHome'
 import LessonViewer from './components/LessonViewer'
 import ExerciseViewer from './components/ExerciseViewer'
 import Readiness from './components/Readiness'
+import Cheatsheet from './components/Cheatsheet'
 
 const COURSE_PROGRESS_STORAGE_KEY = 'cca.study.progress.v1'
 const LEGACY_COMPLETED_LESSONS_KEY = 'completedLessons'
@@ -312,6 +313,10 @@ export default function App() {
     setScreen('readiness')
   }, [])
 
+  const openCheatsheet = useCallback(() => {
+    setScreen('cheatsheet')
+  }, [])
+
   const currentLesson = currentLessonSlug ? getLessonBySlug(currentLessonSlug) : null
   const currentExercise = currentExerciseSlug ? getExerciseBySlug(currentExerciseSlug) : null
   const lessonMicroQuizQuestions = useMemo(
@@ -369,7 +374,12 @@ export default function App() {
           completedLessons={completedLessons}
           onStart={startHomePractice}
           onStudy={openLearnHome}
+          onCheatsheet={openCheatsheet}
         />
+      )}
+
+      {screen === 'cheatsheet' && (
+        <Cheatsheet domains={DOMAINS} onHome={handleHome} />
       )}
 
       {screen === 'learn' && (
